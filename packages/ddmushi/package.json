@@ -1,0 +1,51 @@
+{
+    "name": "ddmushi",
+    "version": "0.1.0",
+    "description": "A tRPC-like API organization library for TanStack React Query",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts --format cjs,esm --dts",
+        "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+        "check-types": "tsc --noEmit",
+        "test": "vitest",
+        "test:watch": "vitest --watch",
+        "test:ui": "vitest --ui",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "api",
+        "react-query",
+        "tanstack"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@tanstack/react-query": "^5.0.0"
+    },
+    "devDependencies": {
+        "@types/react": "^18.0.0",
+        "@vitest/ui": "^2.0.0",
+        "@vitest/coverage-v8": "^2.0.0",
+        "jsdom": "^24.0.0",
+        "tsup": "^8.0.0",
+        "typescript": "5.8.3",
+        "vitest": "^2.0.0",
+        "@ddmushi/typescript-config": "workspace:*"
+    },
+    "peerDependencies": {
+        "react": ">=18.0.0",
+        "@tanstack/react-query": ">=5.0.0"
+    },
+    "exports": {
+        ".": {
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    }
+}
