@@ -34,6 +34,7 @@ class Router<Ctx extends Record<string, unknown>> {
   operation: OperationBuilder<Ctx>;
 
   constructor(opts: RouterOptions<Ctx>) {
+    // TODO: move this elsewhere
     if (!opts.collectionMetadata) {
       opts.collectionMetadata = new Map();
     }
@@ -41,8 +42,13 @@ class Router<Ctx extends Record<string, unknown>> {
     this.operation = new OperationBuilder<Ctx>();
   }
 
-  collection<T extends Record<string, unknown>>(operations: T): Collection<T> {
-    return createRecursiveProxy(this.options, operations) as Collection<T>;
+  collection<T extends Record<string, unknown>>(
+    name: string,
+    operations: T
+  ): Collection<T> {
+    return createRecursiveProxy(this.options, operations, [
+      name,
+    ]) as Collection<T>;
   }
 }
 

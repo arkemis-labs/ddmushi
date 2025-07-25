@@ -11,7 +11,7 @@ describe('React Query integration', () => {
         },
       });
 
-      const userApi = router.collection({
+      const userApi = router.collection('userApi', {
         getUser: router.operation.query<{ id: string; name: string }, string>(
           ({ ctx: _ }, userId) => {
             return Promise.resolve({
@@ -25,7 +25,7 @@ describe('React Query integration', () => {
       // Test query options generation
       const queryOptions = userApi.getUser.queryOptions('user-123');
 
-      expect(queryOptions.queryKey).toEqual(['getUser', 'user-123']);
+      expect(queryOptions.queryKey).toEqual(['userApi', 'getUser', 'user-123']);
       expect(queryOptions.queryFn).toBeTypeOf('function');
     });
 
@@ -34,7 +34,7 @@ describe('React Query integration', () => {
         ctx: { baseUrl: 'https://api.test.com' },
       });
 
-      const api = router.collection({
+      const api = router.collection('api', {
         getProfile: router.operation.query<{ profile: string }>(() =>
           Promise.resolve({ profile: 'test-profile' })
         ),
@@ -47,7 +47,7 @@ describe('React Query integration', () => {
         retry: 3,
       });
 
-      expect(queryOptions.queryKey).toEqual(['getProfile']);
+      expect(queryOptions.queryKey).toEqual(['api', 'getProfile']);
       expect(queryOptions.staleTime).toBe(5 * 60 * 1000);
       expect(queryOptions.gcTime).toBe(10 * 60 * 1000);
       expect(queryOptions.retry).toBe(3);
@@ -58,9 +58,9 @@ describe('React Query integration', () => {
         ctx: { env: 'test' },
       });
 
-      const api = router.collection({
-        users: router.collection({
-          posts: router.collection({
+      const api = router.collection('api', {
+        users: router.collection('users', {
+          posts: router.collection('posts', {
             list: router.operation.query<
               Array<{ id: string; title: string }>,
               { userId: string }
@@ -79,6 +79,7 @@ describe('React Query integration', () => {
       });
 
       expect(queryOptions.queryKey).toEqual([
+        'api',
         'users',
         'posts',
         'list',
@@ -93,7 +94,7 @@ describe('React Query integration', () => {
         ctx: { apiKey: 'test-key' },
       });
 
-      const userApi = router.collection({
+      const userApi = router.collection('userApi', {
         createUser: router.operation.mutation<
           { id: string; success: boolean },
           { name: string; email: string }
@@ -113,7 +114,7 @@ describe('React Query integration', () => {
         ctx: { database: 'test-db' },
       });
 
-      const postApi = router.collection({
+      const postApi = router.collection('postApi', {
         updatePost: router.operation.mutation<
           { updated: boolean },
           { id: string; title: string }
@@ -143,7 +144,7 @@ describe('React Query integration', () => {
         },
       });
 
-      const dataApi = router.collection({
+      const dataApi = router.collection('dataApi', {
         getData: router.operation.query<
           { items: string[]; user: string },
           { category: string }
@@ -172,7 +173,7 @@ describe('React Query integration', () => {
         ctx: { version: '2.0.0' },
       });
 
-      const appApi = router.collection({
+      const appApi = router.collection('appApi', {
         getVersion: router.operation.query<{
           version: string;
           timestamp: number;
@@ -204,7 +205,7 @@ describe('React Query integration', () => {
         },
       });
 
-      const typedApi = router.collection({
+      const typedApi = router.collection('typedApi', {
         getUser: router.operation.query<
           { id: string; name: string; role: 'admin' | 'user' },
           { userId: string }
@@ -229,6 +230,7 @@ describe('React Query integration', () => {
       // This should be typed correctly
       expect(queryOptions).toBeDefined();
       expect(queryOptions.queryKey).toEqual([
+        'typedApi',
         'getUser',
         { userId: 'test-123' },
       ]);

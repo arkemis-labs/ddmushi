@@ -1,0 +1,5 @@
+---
+"ddmushi": patch
+---
+
+fix: queryKey

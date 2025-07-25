@@ -62,7 +62,7 @@ describe('ddmushi core functionality', () => {
         },
       });
 
-      const userCollection = router.collection({
+      const userCollection = router.collection('users', {
         getUser: router.operation.query<{ id: string; name: string }, string>(
           ({ ctx }, userId) => {
             return Promise.resolve({
@@ -89,13 +89,13 @@ describe('ddmushi core functionality', () => {
         ctx: { apiUrl: 'https://api.test.com' },
       });
 
-      const api = router.collection({
-        users: router.collection({
+      const api = router.collection('api', {
+        users: router.collection('users', {
           list: router.operation.query<Array<{ id: string }>, void>(() => {
             return Promise.resolve([{ id: '1' }, { id: '2' }]);
           }),
         }),
-        posts: router.collection({
+        posts: router.collection('posts', {
           create: router.operation.mutation<
             { id: string },
             { title: string; content: string }
