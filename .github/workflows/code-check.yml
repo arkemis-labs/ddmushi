@@ -44,7 +44,7 @@ jobs:
       - run: pnpm lint
   tsc:
     runs-on: ubuntu-latest
-    name: pnpm typecheck
+    name: pnpm check-types
     steps:
       - uses: actions/checkout@v3
         with:
