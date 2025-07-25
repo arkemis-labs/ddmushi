@@ -4,22 +4,42 @@ import type {
   UseQueryOptions,
 } from '@tanstack/react-query';
 
-export type QueryFn<TData = unknown, TParams = unknown> = (
-  input?: TParams
-) => Promise<TData>;
+export type RouterOptions<Ctx extends Record<string, unknown>> = {
+  ctx: Ctx;
+  collectionMetadata?: Map<
+    Record<string, unknown>,
+    { originalTarget: Record<string, unknown>; isCollection: boolean }
+  >;
+};
 
-export type MutationFn<TData = unknown, TVariables = unknown> = (
-  input: TVariables
-) => Promise<TData>;
+export type QueryFn<
+  Ctx extends Record<string, unknown>,
+  TData = unknown,
+  TParams = unknown,
+> = (opts: RouterOptions<Ctx>, input?: TParams) => Promise<TData>;
 
-export interface QueryDefinition<TData = unknown, TParams = unknown> {
+export type MutationFn<
+  Ctx extends Record<string, unknown>,
+  TData = unknown,
+  TVariables = unknown,
+> = (opts: RouterOptions<Ctx>, input: TVariables) => Promise<TData>;
+
+export interface QueryDefinition<
+  Ctx extends Record<string, unknown>,
+  TData = unknown,
+  TParams = unknown,
+> {
   queryKey: (params?: TParams) => QueryKey;
-  queryFn: QueryFn<TData, TParams>;
+  queryFn: QueryFn<Ctx, TData, TParams>;
 }
 
-export interface MutationDefinition<TData = unknown, TVariables = unknown> {
+export interface MutationDefinition<
+  Ctx extends Record<string, unknown>,
+  TData = unknown,
+  TVariables = unknown,
+> {
   mutationKey?: QueryKey;
-  mutationFn: MutationFn<TData, TVariables>;
+  mutationFn: MutationFn<Ctx, TData, TVariables>;
 }
 
 export interface BaseOperation {
@@ -27,28 +47,36 @@ export interface BaseOperation {
 }
 
 export type Collection<T> = {
-  [K in keyof T]: T[K] extends QueryOperation<infer Data, infer Params>
+  [K in keyof T]: T[K] extends QueryOperation<
+    infer _Ctx,
+    infer Data,
+    infer Params
+  >
     ? { queryOptions: QueryOptionsBuilder<Data, Params> }
-    : T[K] extends MutationOperation<infer Data, infer Variables>
+    : T[K] extends MutationOperation<infer _Ctx, infer Data, infer Variables>
       ? { mutationOptions: MutationOptionsBuilder<Data, Variables> }
       : T[K] extends Record<string, unknown>
         ? Collection<T[K]>
         : T[K];
 };
 
-export interface QueryOperation<TData = unknown, TParams = unknown>
-  extends BaseOperation {
+export interface QueryOperation<
+  Ctx extends Record<string, unknown>,
+  TData = unknown,
+  TParams = unknown,
+> extends BaseOperation {
   _operationType: 'query';
-  queryFn: QueryFn<TData, TParams>;
+  queryFn: QueryFn<Ctx, TData, TParams>;
 }
 
-export interface MutationOperation<TData = unknown, TVariables = unknown>
-  extends BaseOperation {
+export interface MutationOperation<
+  Ctx extends Record<string, unknown>,
+  TData = unknown,
+  TVariables = unknown,
+> extends BaseOperation {
   _operationType: 'mutation';
-  mutationFn: MutationFn<TData, TVariables>;
+  mutationFn: MutationFn<Ctx, TData, TVariables>;
 }
-
-export type Operation = QueryOperation | MutationOperation;
 
 export type QueryOptionsBuilder<TData = unknown, TParams = unknown> = (
   params?: TParams,

@@ -6,48 +6,88 @@ import type {
 import type {
   MutationDefinition,
   MutationOperation,
-  QueryDefinition,
   QueryOperation,
+  RouterOptions,
 } from './types';
 
-export function createQueryOptions<TData = unknown, TParams = unknown>(
-  definition: QueryDefinition<TData, TParams>
-) {
-  return (
-    params?: TParams,
-    options?: Partial<UseQueryOptions<TData, Error, TData, QueryKey>>
-  ): UseQueryOptions<TData, Error, TData, QueryKey> => {
-    const queryKey =
-      params !== undefined
-        ? definition.queryKey(params)
-        : definition.queryKey();
+export function createRecursiveProxy<
+  Ctx extends Record<string, unknown>,
+  T extends Record<string, unknown>,
+>(opts: RouterOptions<Ctx>, target: T, path: string[] = []): T {
+  const proxy = new Proxy(target, {
+    get(obj, prop) {
+      if (typeof prop !== 'string') {
+        return Reflect.get(obj, prop);
+      }
 
-    return {
-      queryKey,
-      queryFn: () => definition.queryFn(params),
-      ...options,
-    };
-  };
+      const currentPath = [...path, prop];
+      const value = obj[prop];
+
+      if (isQueryOperation(value)) {
+        return {
+          queryOptions: createQueryOptions(opts, value, currentPath),
+        };
+      }
+
+      if (isMutationOperation(value)) {
+        const mutationDefinition: MutationDefinition<Ctx> = {
+          mutationFn: value.mutationFn,
+        };
+        return {
+          mutationOptions: createMutationOptions(opts, mutationDefinition),
+        };
+      }
+
+      if (isCollection(value)) {
+        const metadata = opts.collectionMetadata?.get(value);
+        const targetToProxy = metadata?.originalTarget ?? value;
+
+        return createRecursiveProxy(opts, targetToProxy, currentPath);
+      }
+
+      return value;
+    },
+  });
+
+  // Store metadata if collectionMetadata is available
+  if (opts.collectionMetadata) {
+    opts.collectionMetadata.set(proxy, {
+      originalTarget: target,
+      isCollection: true,
+    });
+  }
+
+  return proxy;
 }
 
-export function createMutationOptions<TData = unknown, TVariables = unknown>(
-  definition: MutationDefinition<TData, TVariables>
+export function createMutationOptions<
+  Ctx extends Record<string, unknown>,
+  TData = unknown,
+  TVariables = unknown,
+>(
+  opts: RouterOptions<Ctx>,
+  definition: MutationDefinition<Ctx, TData, TVariables>
 ) {
   return (
     options?: Partial<UseMutationOptions<TData, Error, TVariables>>
   ): UseMutationOptions<TData, Error, TVariables> => {
     return {
       mutationKey: definition.mutationKey,
-      mutationFn: definition.mutationFn,
+      mutationFn: (input: TVariables) => definition.mutationFn(opts, input),
       ...options,
     };
   };
 }
 
-export function createQueryOptionsFromOperation<
+export function createQueryOptions<
+  Ctx extends Record<string, unknown>,
   TData = unknown,
   TParams = unknown,
->(operation: QueryOperation<TData, TParams>, path: string[]) {
+>(
+  opts: RouterOptions<Ctx>,
+  operation: QueryOperation<Ctx, TData, TParams>,
+  path: string[]
+) {
   return (
     input?: TParams,
     options?: Partial<UseQueryOptions<TData, Error, TData, QueryKey>>
@@ -56,19 +96,19 @@ export function createQueryOptionsFromOperation<
 
     return {
       queryKey,
-      queryFn: () => operation.queryFn(input),
+      queryFn: () => operation.queryFn(opts, input),
       ...options,
     };
   };
 }
 
-export function buildQueryKey(path: string[], params?: unknown): QueryKey {
-  return params !== undefined ? [...path, params] : path;
+function isCollection(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-export function isQueryOperation(
+function isQueryOperation(
   definition: unknown
-): definition is QueryOperation {
+): definition is QueryOperation<Record<string, unknown>, unknown, unknown> {
   return Boolean(
     definition &&
       typeof definition === 'object' &&
@@ -79,9 +119,9 @@ export function isQueryOperation(
   );
 }
 
-export function isMutationOperation(
+function isMutationOperation(
   definition: unknown
-): definition is MutationOperation {
+): definition is MutationOperation<Record<string, unknown>, unknown, unknown> {
   return Boolean(
     definition &&
       typeof definition === 'object' &&
@@ -90,4 +130,8 @@ export function isMutationOperation(
       '_operationType' in definition &&
       definition._operationType === 'mutation'
   );
+}
+
+export function buildQueryKey(path: string[], params?: unknown): QueryKey {
+  return params !== undefined ? [...path, params] : path;
 }
