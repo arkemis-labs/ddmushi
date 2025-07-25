@@ -1,5 +1,11 @@
 # ddmushi
 
+## 0.2.1
+
+### Patch Changes
+
+- [#3](https://github.com/arkemis-labs/ddmushi/pull/3) [`64e7822`](https://github.com/arkemis-labs/ddmushi/commit/64e7822c5b1ed146476d41eae240ea3df5e62f65) Thanks [@ilyichv](https://github.com/ilyichv)! - fix: queryKey
+
 ## 0.2.0
 
 ### Minor Changes
