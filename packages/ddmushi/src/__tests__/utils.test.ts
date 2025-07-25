@@ -2,95 +2,23 @@ import { describe, expect, it, vi } from 'vitest';
 import type {
   MutationDefinition,
   MutationOperation,
-  QueryDefinition,
   QueryOperation,
+  RouterOptions,
 } from '../types';
 import {
   buildQueryKey,
   createMutationOptions,
   createQueryOptions,
-  createQueryOptionsFromOperation,
   isMutationOperation,
   isQueryOperation,
 } from '../utils';
 
 describe('utils', () => {
-  describe('createQueryOptions', () => {
-    it('should create query options with params', () => {
-      const queryFn = vi.fn().mockResolvedValue({ data: 'test' });
-      const queryKey = vi.fn().mockReturnValue(['users', { id: 1 }]);
-
-      const definition: QueryDefinition<{ data: string }, { id: number }> = {
-        queryKey,
-        queryFn,
-      };
-
-      const optionsBuilder = createQueryOptions(definition);
-      const options = optionsBuilder({ id: 1 });
-
-      expect(queryKey).toHaveBeenCalledWith({ id: 1 });
-      expect(options.queryKey).toEqual(['users', { id: 1 }]);
-      expect(typeof options.queryFn).toBe('function');
-    });
-
-    it('should create query options without params', () => {
-      const queryFn = vi.fn().mockResolvedValue({ data: 'test' });
-      const queryKey = vi.fn().mockReturnValue(['users']);
-
-      const definition: QueryDefinition<{ data: string }> = {
-        queryKey,
-        queryFn,
-      };
-
-      const optionsBuilder = createQueryOptions(definition);
-      const options = optionsBuilder();
-
-      expect(queryKey).toHaveBeenCalledWith();
-      expect(options.queryKey).toEqual(['users']);
-      expect(typeof options.queryFn).toBe('function');
-    });
-
-    it('should merge additional options', () => {
-      const queryFn = vi.fn().mockResolvedValue({ data: 'test' });
-      const queryKey = vi.fn().mockReturnValue(['users']);
-
-      const definition: QueryDefinition<{ data: string }> = {
-        queryKey,
-        queryFn,
-      };
-
-      const optionsBuilder = createQueryOptions(definition);
-      const options = optionsBuilder(undefined, {
-        enabled: false,
-        staleTime: 5000,
-      });
-
-      expect(options.enabled).toBe(false);
-      expect(options.staleTime).toBe(5000);
-    });
-
-    it('should call queryFn with correct params in returned queryFn', async () => {
-      const queryFn = vi.fn().mockResolvedValue({ data: 'test' });
-      const queryKey = vi.fn().mockReturnValue(['users', { id: 1 }]);
-
-      const definition: QueryDefinition<{ data: string }, { id: number }> = {
-        queryKey,
-        queryFn,
-      };
-
-      const optionsBuilder = createQueryOptions(definition);
-      const options = optionsBuilder({ id: 1 });
-
-      await (options.queryFn as () => Promise<{ data: string }>)();
-
-      expect(queryFn).toHaveBeenCalledWith({ id: 1 });
-    });
-  });
-
   describe('createMutationOptions', () => {
     it('should create mutation options with mutationKey', () => {
       const mutationFn = vi.fn().mockResolvedValue({ success: true });
       const mutationKey = ['createUser'];
+      const opts: RouterOptions = {};
 
       const definition: MutationDefinition<
         { success: boolean },
@@ -100,15 +28,16 @@ describe('utils', () => {
         mutationFn,
       };
 
-      const optionsBuilder = createMutationOptions(definition);
+      const optionsBuilder = createMutationOptions(opts, definition);
       const options = optionsBuilder();
 
       expect(options.mutationKey).toEqual(['createUser']);
-      expect(options.mutationFn).toBe(mutationFn);
+      expect(typeof options.mutationFn).toBe('function');
     });
 
     it('should create mutation options without mutationKey', () => {
       const mutationFn = vi.fn().mockResolvedValue({ success: true });
+      const opts: RouterOptions = {};
 
       const definition: MutationDefinition<
         { success: boolean },
@@ -117,15 +46,16 @@ describe('utils', () => {
         mutationFn,
       };
 
-      const optionsBuilder = createMutationOptions(definition);
+      const optionsBuilder = createMutationOptions(opts, definition);
       const options = optionsBuilder();
 
       expect(options.mutationKey).toBeUndefined();
-      expect(options.mutationFn).toBe(mutationFn);
+      expect(typeof options.mutationFn).toBe('function');
     });
 
     it('should merge additional options', () => {
       const mutationFn = vi.fn().mockResolvedValue({ success: true });
+      const opts: RouterOptions = {};
 
       const definition: MutationDefinition<
         { success: boolean },
@@ -134,17 +64,63 @@ describe('utils', () => {
         mutationFn,
       };
 
-      const optionsBuilder = createMutationOptions(definition);
+      const optionsBuilder = createMutationOptions(opts, definition);
       const onError = vi.fn();
       const options = optionsBuilder({ onError });
 
       expect(options.onError).toBe(onError);
     });
+
+    it('should pass opts to mutationFn', async () => {
+      const mutationFn = vi.fn().mockResolvedValue({ success: true });
+      const opts: RouterOptions = { ctx: { user: { id: 123 } } };
+
+      const definition: MutationDefinition<
+        { success: boolean },
+        { name: string }
+      > = {
+        mutationFn,
+      };
+
+      const optionsBuilder = createMutationOptions(opts, definition);
+      const options = optionsBuilder();
+
+      const input = { name: 'John' };
+      if (options.mutationFn) {
+        await options.mutationFn(input);
+      }
+
+      expect(mutationFn).toHaveBeenCalledWith(opts, input);
+    });
+
+    it('should pass ctx through opts to mutationFn', async () => {
+      const mutationFn = vi.fn().mockResolvedValue({ success: true });
+      const ctx = { user: { id: 123, role: 'admin' }, tenant: 'acme' };
+      const opts: RouterOptions = { ctx };
+
+      const definition: MutationDefinition<
+        { success: boolean },
+        { name: string }
+      > = {
+        mutationFn,
+      };
+
+      const optionsBuilder = createMutationOptions(opts, definition);
+      const options = optionsBuilder();
+
+      const input = { name: 'John' };
+      if (options.mutationFn) {
+        await options.mutationFn(input);
+      }
+
+      expect(mutationFn).toHaveBeenCalledWith({ ctx }, input);
+    });
   });
 
-  describe('createQueryOptionsFromOperation', () => {
+  describe('createQueryOptions', () => {
     it('should create query options with input', () => {
       const queryFn = vi.fn().mockResolvedValue({ data: 'test' });
+      const opts: RouterOptions = {};
 
       const operation: QueryOperation<{ data: string }, { id: number }> = {
         _type: 'operation',
@@ -153,7 +129,7 @@ describe('utils', () => {
       };
 
       const path = ['users', 'getUser'];
-      const optionsBuilder = createQueryOptionsFromOperation(operation, path);
+      const optionsBuilder = createQueryOptions(opts, operation, path);
       const options = optionsBuilder({ id: 1 });
 
       expect(options.queryKey).toEqual(['users', 'getUser', { id: 1 }]);
@@ -162,6 +138,7 @@ describe('utils', () => {
 
     it('should create query options without input', () => {
       const queryFn = vi.fn().mockResolvedValue({ data: 'test' });
+      const opts: RouterOptions = {};
 
       const operation: QueryOperation<{ data: string }> = {
         _type: 'operation',
@@ -170,7 +147,7 @@ describe('utils', () => {
       };
 
       const path = ['users', 'list'];
-      const optionsBuilder = createQueryOptionsFromOperation(operation, path);
+      const optionsBuilder = createQueryOptions(opts, operation, path);
       const options = optionsBuilder();
 
       expect(options.queryKey).toEqual(['users', 'list']);
@@ -179,6 +156,7 @@ describe('utils', () => {
 
     it('should call operation queryFn with correct input', async () => {
       const queryFn = vi.fn().mockResolvedValue({ data: 'test' });
+      const opts: RouterOptions = {};
 
       const operation: QueryOperation<{ data: string }, { id: number }> = {
         _type: 'operation',
@@ -187,16 +165,17 @@ describe('utils', () => {
       };
 
       const path = ['users', 'getUser'];
-      const optionsBuilder = createQueryOptionsFromOperation(operation, path);
+      const optionsBuilder = createQueryOptions(opts, operation, path);
       const options = optionsBuilder({ id: 1 });
 
       await (options.queryFn as () => Promise<{ data: string }>)();
 
-      expect(queryFn).toHaveBeenCalledWith({ id: 1 });
+      expect(queryFn).toHaveBeenCalledWith(opts, { id: 1 });
     });
 
     it('should merge additional options', () => {
       const queryFn = vi.fn().mockResolvedValue({ data: 'test' });
+      const opts: RouterOptions = {};
 
       const operation: QueryOperation<{ data: string }> = {
         _type: 'operation',
@@ -205,10 +184,69 @@ describe('utils', () => {
       };
 
       const path = ['users', 'list'];
-      const optionsBuilder = createQueryOptionsFromOperation(operation, path);
+      const optionsBuilder = createQueryOptions(opts, operation, path);
       const options = optionsBuilder(undefined, { enabled: false });
 
       expect(options.enabled).toBe(false);
+    });
+
+    it('should pass opts to queryFn', async () => {
+      const queryFn = vi.fn().mockResolvedValue({ data: 'test' });
+      const opts: RouterOptions = { ctx: { user: { id: 123 } } };
+
+      const operation: QueryOperation<{ data: string }, { id: number }> = {
+        _type: 'operation',
+        _operationType: 'query',
+        queryFn,
+      };
+
+      const path = ['users', 'getUser'];
+      const optionsBuilder = createQueryOptions(opts, operation, path);
+      const options = optionsBuilder({ id: 1 });
+
+      await (options.queryFn as () => Promise<{ data: string }>)();
+
+      expect(queryFn).toHaveBeenCalledWith(opts, { id: 1 });
+    });
+
+    it('should pass ctx through opts to queryFn', async () => {
+      const queryFn = vi.fn().mockResolvedValue({ data: 'test' });
+      const ctx = { user: { id: 123, role: 'admin' }, tenant: 'acme' };
+      const opts: RouterOptions = { ctx };
+
+      const operation: QueryOperation<{ data: string }, { id: number }> = {
+        _type: 'operation',
+        _operationType: 'query',
+        queryFn,
+      };
+
+      const path = ['users', 'getUser'];
+      const optionsBuilder = createQueryOptions(opts, operation, path);
+      const options = optionsBuilder({ id: 1 });
+
+      await (options.queryFn as () => Promise<{ data: string }>)();
+
+      expect(queryFn).toHaveBeenCalledWith({ ctx }, { id: 1 });
+    });
+
+    it('should work with undefined input and pass opts', async () => {
+      const queryFn = vi.fn().mockResolvedValue({ data: 'test' });
+      const ctx = { user: { id: 123 } };
+      const opts: RouterOptions = { ctx };
+
+      const operation: QueryOperation<{ data: string }> = {
+        _type: 'operation',
+        _operationType: 'query',
+        queryFn,
+      };
+
+      const path = ['users', 'list'];
+      const optionsBuilder = createQueryOptions(opts, operation, path);
+      const options = optionsBuilder();
+
+      await (options.queryFn as () => Promise<{ data: string }>)();
+
+      expect(queryFn).toHaveBeenCalledWith({ ctx }, undefined);
     });
   });
 

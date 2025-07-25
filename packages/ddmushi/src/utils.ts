@@ -6,31 +6,12 @@ import type {
 import type {
   MutationDefinition,
   MutationOperation,
-  QueryDefinition,
   QueryOperation,
+  RouterOptions,
 } from './types';
 
-export function createQueryOptions<TData = unknown, TParams = unknown>(
-  definition: QueryDefinition<TData, TParams>
-) {
-  return (
-    params?: TParams,
-    options?: Partial<UseQueryOptions<TData, Error, TData, QueryKey>>
-  ): UseQueryOptions<TData, Error, TData, QueryKey> => {
-    const queryKey =
-      params !== undefined
-        ? definition.queryKey(params)
-        : definition.queryKey();
-
-    return {
-      queryKey,
-      queryFn: () => definition.queryFn(params),
-      ...options,
-    };
-  };
-}
-
 export function createMutationOptions<TData = unknown, TVariables = unknown>(
+  opts: RouterOptions,
   definition: MutationDefinition<TData, TVariables>
 ) {
   return (
@@ -38,16 +19,17 @@ export function createMutationOptions<TData = unknown, TVariables = unknown>(
   ): UseMutationOptions<TData, Error, TVariables> => {
     return {
       mutationKey: definition.mutationKey,
-      mutationFn: definition.mutationFn,
+      mutationFn: (input: TVariables) => definition.mutationFn(opts, input),
       ...options,
     };
   };
 }
 
-export function createQueryOptionsFromOperation<
-  TData = unknown,
-  TParams = unknown,
->(operation: QueryOperation<TData, TParams>, path: string[]) {
+export function createQueryOptions<TData = unknown, TParams = unknown>(
+  opts: RouterOptions,
+  operation: QueryOperation<TData, TParams>,
+  path: string[]
+) {
   return (
     input?: TParams,
     options?: Partial<UseQueryOptions<TData, Error, TData, QueryKey>>
@@ -56,7 +38,7 @@ export function createQueryOptionsFromOperation<
 
     return {
       queryKey,
-      queryFn: () => operation.queryFn(input),
+      queryFn: () => operation.queryFn(opts, input),
       ...options,
     };
   };

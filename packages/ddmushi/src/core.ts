@@ -3,18 +3,21 @@ import type {
   MutationDefinition,
   MutationOperation,
   QueryOperation,
+  RouterOptions,
 } from './types';
 import {
   createMutationOptions,
-  createQueryOptionsFromOperation,
+  createQueryOptions,
   isMutationOperation,
   isQueryOperation,
 } from './utils';
 
 export function router<T extends Record<string, unknown>>(
+  options: RouterOptions,
   apiCollection: T
 ): Collection<T> {
   function createProxy(
+    opts: RouterOptions,
     target: Record<string, unknown>,
     path: string[] = []
   ): Record<string, unknown> {
@@ -29,7 +32,7 @@ export function router<T extends Record<string, unknown>>(
 
         if (isQueryOperation(value)) {
           return {
-            queryOptions: createQueryOptionsFromOperation(value, currentPath),
+            queryOptions: createQueryOptions(opts, value, currentPath),
           };
         }
 
@@ -38,12 +41,16 @@ export function router<T extends Record<string, unknown>>(
             mutationFn: value.mutationFn,
           };
           return {
-            mutationOptions: createMutationOptions(mutationDefinition),
+            mutationOptions: createMutationOptions(opts, mutationDefinition),
           };
         }
 
         if (value && typeof value === 'object') {
-          return createProxy(value as Record<string, unknown>, currentPath);
+          return createProxy(
+            opts,
+            value as Record<string, unknown>,
+            currentPath
+          );
         }
 
         return value;
@@ -51,7 +58,7 @@ export function router<T extends Record<string, unknown>>(
     });
   }
 
-  return createProxy(apiCollection) as Collection<T>;
+  return createProxy(options, apiCollection) as Collection<T>;
 }
 
 export function collection<T extends Record<string, unknown>>(
@@ -62,19 +69,17 @@ export function collection<T extends Record<string, unknown>>(
 
 export const operation = {
   query: <TData = unknown, TParams = unknown>(
-    queryFn:
-      | ((input?: TParams) => Promise<TData>)
-      | ((input: TParams) => Promise<TData>)
+    queryFn: (opts: RouterOptions, input?: TParams) => Promise<TData>
   ): QueryOperation<TData, TParams> => {
     return {
       _type: 'operation',
       _operationType: 'query',
-      queryFn: queryFn as (input?: TParams) => Promise<TData>,
+      queryFn,
     };
   },
 
   mutation: <TData = unknown, TVariables = unknown>(
-    mutationFn: (input: TVariables) => Promise<TData>
+    mutationFn: (opts: RouterOptions, input: TVariables) => Promise<TData>
   ): MutationOperation<TData, TVariables> => {
     return {
       _type: 'operation',

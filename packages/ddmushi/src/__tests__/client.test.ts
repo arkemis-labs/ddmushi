@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { collection, operation, router } from '../core';
+import type { RouterOptions } from '../types';
 
 describe('client', () => {
   describe('operation builders', () => {
@@ -16,7 +17,7 @@ describe('client', () => {
       });
 
       it('should create typed query operation', () => {
-        const queryFn = (input?: { id: number }) =>
+        const queryFn = (_opts: RouterOptions, input?: { id: number }) =>
           Promise.resolve({ name: 'John', id: input?.id || 1 });
         const queryOp = operation.query<
           { name: string; id: number },
@@ -42,7 +43,7 @@ describe('client', () => {
       });
 
       it('should create typed mutation operation', () => {
-        const mutationFn = (input: { name: string }) =>
+        const mutationFn = (_opts: RouterOptions, input: { name: string }) =>
           Promise.resolve({ id: 1, ...input });
         const mutationOp = operation.mutation<
           { id: number; name: string },
@@ -59,11 +60,12 @@ describe('client', () => {
   describe('collection', () => {
     it('should return the collection as-is', () => {
       const testCollection = {
-        getUser: operation.query(() =>
+        getUser: operation.query((_opts: RouterOptions) =>
           Promise.resolve({ id: 1, name: 'John' })
         ),
-        createUser: operation.mutation((input: { name: string }) =>
-          Promise.resolve({ id: 1, ...input })
+        createUser: operation.mutation(
+          (_opts: RouterOptions, input: { name: string }) =>
+            Promise.resolve({ id: 1, ...input })
         ),
       };
 
@@ -74,15 +76,16 @@ describe('client', () => {
     it('should work with nested collections', () => {
       const testCollection = {
         users: {
-          getUser: operation.query(() =>
+          getUser: operation.query((_opts: RouterOptions) =>
             Promise.resolve({ id: 1, name: 'John' })
           ),
-          createUser: operation.mutation((input: { name: string }) =>
-            Promise.resolve({ id: 1, ...input })
+          createUser: operation.mutation(
+            (_opts: RouterOptions, input: { name: string }) =>
+              Promise.resolve({ id: 1, ...input })
           ),
         },
         posts: {
-          getPost: operation.query(() =>
+          getPost: operation.query((_opts: RouterOptions) =>
             Promise.resolve({ id: 1, title: 'Test' })
           ),
         },
@@ -100,7 +103,7 @@ describe('client', () => {
         getUser: operation.query(queryFn),
       };
 
-      const api = router(testCollection);
+      const api = router({}, testCollection);
       const userQuery = api.getUser;
 
       expect(userQuery).toHaveProperty('queryOptions');
@@ -113,7 +116,7 @@ describe('client', () => {
         createUser: operation.mutation(mutationFn),
       };
 
-      const api = router(testCollection);
+      const api = router({}, testCollection);
       const userMutation = api.createUser;
 
       expect(userMutation).toHaveProperty('mutationOptions');
@@ -123,21 +126,22 @@ describe('client', () => {
     it('should handle nested collections', () => {
       const testCollection = {
         users: {
-          getUser: operation.query(() =>
+          getUser: operation.query((_opts: RouterOptions) =>
             Promise.resolve({ id: 1, name: 'John' })
           ),
-          createUser: operation.mutation((input: { name: string }) =>
-            Promise.resolve({ id: 1, ...input })
+          createUser: operation.mutation(
+            (_opts: RouterOptions, input: { name: string }) =>
+              Promise.resolve({ id: 1, ...input })
           ),
         },
         posts: {
-          getPost: operation.query(() =>
+          getPost: operation.query((_opts: RouterOptions) =>
             Promise.resolve({ id: 1, title: 'Test' })
           ),
         },
       };
 
-      const api = router(testCollection);
+      const api = router({}, testCollection);
 
       expect(api.users).toBeDefined();
       expect(api.users.getUser).toHaveProperty('queryOptions');
@@ -155,7 +159,7 @@ describe('client', () => {
         },
       };
 
-      const api = router(testCollection);
+      const api = router({}, testCollection);
       const queryOptions = api.users.profile.getUser.queryOptions();
 
       expect(queryOptions.queryKey).toEqual(['users', 'profile', 'getUser']);
@@ -167,7 +171,7 @@ describe('client', () => {
         getUser: operation.query(queryFn),
       };
 
-      const api = router(testCollection);
+      const api = router({}, testCollection);
       const queryOptions = api.getUser.queryOptions({ id: 123 });
 
       expect(queryOptions.queryKey).toEqual(['getUser', { id: 123 }]);
@@ -175,12 +179,12 @@ describe('client', () => {
 
     it('should handle non-string properties correctly', () => {
       const testCollection = {
-        getUser: operation.query(() =>
+        getUser: operation.query((_opts: RouterOptions) =>
           Promise.resolve({ id: 1, name: 'John' })
         ),
       };
 
-      const api = router(testCollection);
+      const api = router({}, testCollection);
       const symbolProp = Symbol('test');
 
       // Should not throw when accessing symbol properties
@@ -195,7 +199,7 @@ describe('client', () => {
         someNumber: 42,
       };
 
-      const api = router(testCollection);
+      const api = router({}, testCollection);
 
       expect(api.someValue).toBe('test-value');
       expect(api.someNumber).toBe(42);

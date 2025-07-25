@@ -4,11 +4,17 @@ import type {
   UseQueryOptions,
 } from '@tanstack/react-query';
 
+export type RouterOptions = {
+  ctx?: Record<string, unknown>;
+};
+
 export type QueryFn<TData = unknown, TParams = unknown> = (
+  opts: RouterOptions,
   input?: TParams
 ) => Promise<TData>;
 
 export type MutationFn<TData = unknown, TVariables = unknown> = (
+  opts: RouterOptions,
   input: TVariables
 ) => Promise<TData>;
 
