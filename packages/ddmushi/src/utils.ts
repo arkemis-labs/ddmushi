@@ -14,7 +14,7 @@ export function createRecursiveProxy<
   Ctx extends Record<string, unknown>,
   T extends Record<string, unknown>,
 >(opts: RouterOptions<Ctx>, target: T, path: string[] = []): T {
-  return new Proxy(target, {
+  const proxy = new Proxy(target, {
     get(obj, prop) {
       if (typeof prop !== 'string') {
         return Reflect.get(obj, prop);
@@ -38,17 +38,26 @@ export function createRecursiveProxy<
         };
       }
 
-      if (value && typeof value === 'object') {
-        return createRecursiveProxy(
-          opts,
-          value as Record<string, unknown>,
-          currentPath
-        );
+      if (isCollection(value)) {
+        const metadata = opts.collectionMetadata?.get(value);
+        const targetToProxy = metadata?.originalTarget ?? value;
+
+        return createRecursiveProxy(opts, targetToProxy, currentPath);
       }
 
       return value;
     },
   });
+
+  // Store metadata if collectionMetadata is available
+  if (opts.collectionMetadata) {
+    opts.collectionMetadata.set(proxy, {
+      originalTarget: target,
+      isCollection: true,
+    });
+  }
+
+  return proxy;
 }
 
 export function createMutationOptions<
@@ -93,7 +102,11 @@ export function createQueryOptions<
   };
 }
 
-export function isQueryOperation(
+function isCollection(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isQueryOperation(
   definition: unknown
 ): definition is QueryOperation<Record<string, unknown>, unknown, unknown> {
   return Boolean(
@@ -106,7 +119,7 @@ export function isQueryOperation(
   );
 }
 
-export function isMutationOperation(
+function isMutationOperation(
   definition: unknown
 ): definition is MutationOperation<Record<string, unknown>, unknown, unknown> {
   return Boolean(

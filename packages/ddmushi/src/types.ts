@@ -6,6 +6,10 @@ import type {
 
 export type RouterOptions<Ctx extends Record<string, unknown>> = {
   ctx: Ctx;
+  collectionMetadata?: Map<
+    Record<string, unknown>,
+    { originalTarget: Record<string, unknown>; isCollection: boolean }
+  >;
 };
 
 export type QueryFn<

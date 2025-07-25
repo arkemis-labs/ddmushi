@@ -34,6 +34,9 @@ class Router<Ctx extends Record<string, unknown>> {
   operation: OperationBuilder<Ctx>;
 
   constructor(opts: RouterOptions<Ctx>) {
+    if (!opts.collectionMetadata) {
+      opts.collectionMetadata = new Map();
+    }
     this.options = opts;
     this.operation = new OperationBuilder<Ctx>();
   }
