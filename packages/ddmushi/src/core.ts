@@ -29,7 +29,7 @@ class OperationBuilder<Ctx extends Record<string, unknown>> {
   }
 }
 
-class Router<Ctx extends Record<string, unknown>> {
+export class Router<Ctx extends Record<string, unknown>> {
   options: RouterOptions<Ctx>;
   operation: OperationBuilder<Ctx>;
 
