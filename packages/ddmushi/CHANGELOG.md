@@ -1,5 +1,11 @@
 # ddmushi
 
+## 0.2.2
+
+### Patch Changes
+
+- [#5](https://github.com/arkemis-labs/ddmushi/pull/5) [`7a5b215`](https://github.com/arkemis-labs/ddmushi/commit/7a5b21556d8b81b1e213355e4cdfe49938df152a) Thanks [@ilyichv](https://github.com/ilyichv)! - fix: export types
+
 ## 0.2.1
 
 ### Patch Changes

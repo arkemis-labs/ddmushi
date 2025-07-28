@@ -1,6 +1,6 @@
 {
     "name": "ddmushi",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "description": "A tRPC-like API organization library for TanStack React Query",
     "main": "dist/index.js",
     "module": "dist/index.mjs",
