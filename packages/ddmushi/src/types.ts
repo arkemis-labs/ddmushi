@@ -2,6 +2,7 @@ import type {
   QueryKey,
   UseMutationOptions,
   UseQueryOptions,
+  UseSuspenseQueryOptions,
 } from '@tanstack/react-query';
 
 export type RouterOptions<Ctx extends Record<string, unknown>> = {
@@ -80,8 +81,12 @@ export interface MutationOperation<
 
 export type QueryOptionsBuilder<TData = unknown, TParams = unknown> = (
   params?: TParams,
-  options?: Partial<UseQueryOptions<TData, Error, TData, QueryKey>>
-) => UseQueryOptions<TData, Error, TData, QueryKey>;
+  options?: Partial<
+    UseQueryOptions<TData, Error, TData, QueryKey> &
+      UseSuspenseQueryOptions<TData, Error, TData, QueryKey>
+  >
+) => UseQueryOptions<TData, Error, TData, QueryKey> &
+  UseSuspenseQueryOptions<TData, Error, TData, QueryKey>;
 
 export type MutationOptionsBuilder<TData = unknown, TVariables = unknown> = (
   options?: Partial<UseMutationOptions<TData, Error, TVariables>>

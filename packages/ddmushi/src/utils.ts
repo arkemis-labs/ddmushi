@@ -2,6 +2,7 @@ import type {
   QueryKey,
   UseMutationOptions,
   UseQueryOptions,
+  UseSuspenseQueryOptions,
 } from '@tanstack/react-query';
 import type {
   MutationDefinition,
@@ -90,15 +91,20 @@ export function createQueryOptions<
 ) {
   return (
     input?: TParams,
-    options?: Partial<UseQueryOptions<TData, Error, TData, QueryKey>>
-  ): UseQueryOptions<TData, Error, TData, QueryKey> => {
+    options?: Partial<
+      UseQueryOptions<TData, Error, TData, QueryKey> &
+        UseSuspenseQueryOptions<TData, Error, TData, QueryKey>
+    >
+  ): UseQueryOptions<TData, Error, TData, QueryKey> &
+    UseSuspenseQueryOptions<TData, Error, TData, QueryKey> => {
     const queryKey = input !== undefined ? [...path, input] : path;
 
     return {
       queryKey,
       queryFn: () => operation.queryFn(opts, input),
       ...options,
-    };
+    } as UseQueryOptions<TData, Error, TData, QueryKey> &
+      UseSuspenseQueryOptions<TData, Error, TData, QueryKey>;
   };
 }
 
