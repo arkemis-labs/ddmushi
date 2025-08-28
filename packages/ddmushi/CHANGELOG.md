@@ -1,5 +1,11 @@
 # ddmushi
 
+## 0.2.3
+
+### Patch Changes
+
+- [#7](https://github.com/arkemis-labs/ddmushi/pull/7) [`72e8d78`](https://github.com/arkemis-labs/ddmushi/commit/72e8d78b8c4e9eaccdd1219fb042cd15bd1400b6) Thanks [@ilyichv](https://github.com/ilyichv)! - fix: adjust types for useSuspenseQuery
+
 ## 0.2.2
 
 ### Patch Changes
