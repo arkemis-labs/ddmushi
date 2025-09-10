@@ -4,7 +4,7 @@ import { ddmushi } from '../core';
 describe('React Query integration', () => {
   describe('Query options generation', () => {
     it('should generate proper query options for basic queries', () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: {
           apiUrl: 'https://api.example.com',
           token: 'test-token',
@@ -33,7 +33,7 @@ describe('React Query integration', () => {
     });
 
     it('should generate query options with additional React Query options', () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: { baseUrl: 'https://api.test.com' },
       });
 
@@ -57,7 +57,7 @@ describe('React Query integration', () => {
     });
 
     it('should handle nested collection query options', () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: { env: 'test' },
       });
 
@@ -92,7 +92,7 @@ describe('React Query integration', () => {
 
   describe('Infinite query options generation', () => {
     it('should generate proper infinite query options for queries', () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: { env: 'test' },
       });
 
@@ -114,7 +114,7 @@ describe('React Query integration', () => {
 
   describe('Mutation options generation', () => {
     it('should generate proper mutation options', () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: { apiKey: 'test-key' },
       });
 
@@ -134,7 +134,7 @@ describe('React Query integration', () => {
     });
 
     it('should support mutation options with additional React Query options', () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: { database: 'test-db' },
       });
 
@@ -161,7 +161,7 @@ describe('React Query integration', () => {
 
   describe('Query execution', () => {
     it('should execute queries with proper context and parameters', async () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: {
           userId: 'current-user',
           permissions: ['read', 'write'],
@@ -193,7 +193,7 @@ describe('React Query integration', () => {
     });
 
     it('should handle queries without parameters', async () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: { version: '2.0.0' },
       });
 
@@ -222,7 +222,7 @@ describe('React Query integration', () => {
 
   describe('Type safety', () => {
     it('should maintain proper TypeScript types through the chain', () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: {
           database: 'test-db',
           user: { id: 'user-123', role: 'admin' as const },

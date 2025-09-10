@@ -32,7 +32,7 @@ function createOperationBuilder<Ctx extends Record<string, unknown>>() {
 }
 
 export class DDmushiBuilder {
-  create<Ctx extends Record<string, unknown>>(opts: RuntimeOptions<Ctx>) {
+  init<Ctx extends Record<string, unknown>>(opts: RuntimeOptions<Ctx>) {
     const meta: DDmushiMeta<Ctx> = {
       ...opts,
       _config: {

@@ -4,7 +4,7 @@ import { ddmushi } from '../core';
 describe('ddmushi core functionality', () => {
   describe('Router creation', () => {
     it('should create a router with context', () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: {
           userId: 'test-user-123',
           apiKey: 'test-api-key',
@@ -20,7 +20,7 @@ describe('ddmushi core functionality', () => {
 
   describe('Operation creation', () => {
     it('should create query operations', () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: { test: 'value' },
       });
 
@@ -36,7 +36,7 @@ describe('ddmushi core functionality', () => {
     });
 
     it('should create mutation operations', () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: { test: 'value' },
       });
 
@@ -55,7 +55,7 @@ describe('ddmushi core functionality', () => {
 
   describe('Collection creation', () => {
     it('should create a collection with operations', () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: {
           database: 'test-db',
           userId: 'user-123',
@@ -85,7 +85,7 @@ describe('ddmushi core functionality', () => {
     });
 
     it('should support nested collections', () => {
-      const router = ddmushi.create({
+      const router = ddmushi.init({
         ctx: { apiUrl: 'https://api.test.com' },
       });
 
@@ -120,7 +120,7 @@ describe('ddmushi core functionality', () => {
         config: { timeout: 5000 },
       };
 
-      const router = ddmushi.create({ ctx: mockCtx });
+      const router = ddmushi.init({ ctx: mockCtx });
 
       // Create a query operation that uses the context
       const testQuery = router.operation.query<
@@ -152,7 +152,7 @@ describe('ddmushi core functionality', () => {
 
     it('should handle different context types', async () => {
       // Test with minimal context
-      const simpleRouter = ddmushi.create({
+      const simpleRouter = ddmushi.init({
         ctx: { version: '1.0.0' },
       });
 
