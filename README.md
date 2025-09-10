@@ -15,21 +15,24 @@ pnpm add ddmushi @tanstack/react-query
 ## Quick Start
 
 ```typescript
-import { createRouter } from 'ddmushi';
+import { ddmushi } from 'ddmushi';
 
 // Create a router with shared context
-const router = createRouter({
+const router = ddmushi.init({
   ctx: {
     apiUrl: 'https://api.example.com',
     token: 'your-auth-token'
   }
 });
 
+function createCollection = router.collection;
+function operation = router.operation;
+
 // Define your API operations
-export const api = router.collection({
-  users: router.collection({
-    list: router.operation.query<User[]>(
-      async ({ ctx }) => {
+export const api = createCollection({
+  users: createCollection({
+    list: operation.query<User[]>(
+      async ({ opts: { ctx } }) => {
         const response = await fetch(`${ctx.apiUrl}/users`, {
           headers: { Authorization: `Bearer ${ctx.token}` }
         });
@@ -37,8 +40,8 @@ export const api = router.collection({
       }
     ),
     
-    create: router.operation.mutation<User, CreateUserInput>(
-      async ({ ctx }, input) => {
+    create: operation.mutation<User, CreateUserInput>(
+      async ({ opts: { ctx }, input }) => {
         const response = await fetch(`${ctx.apiUrl}/users`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${ctx.token}` },
@@ -55,6 +58,11 @@ function UsersList() {
   const { data: users } = useQuery(api.users.list.queryOptions());
   const createUser = useMutation(api.users.create.mutationOptions());
   
+  // For infinite queries (pagination, load more, etc.)
+  const { data: infiniteUsers } = useInfiniteQuery(
+    api.users.list.infiniteQueryOptions()
+  );
+  
   // ... component logic
 }
 ```
@@ -66,6 +74,7 @@ function UsersList() {
 - 📦 **Organized APIs** - Nest operations in collections for better organization
 - 🚀 **DX Focused** - tRPC-like developer experience for REST APIs
 - 🪶 **Lightweight** - Minimal runtime overhead
+- ♾️ **Infinite Queries** - Built-in support for pagination and infinite scrolling
 
 ## Development
 

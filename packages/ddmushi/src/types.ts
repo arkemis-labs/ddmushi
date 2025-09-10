@@ -7,25 +7,24 @@ import type {
   UseSuspenseQueryOptions,
 } from '@tanstack/react-query';
 
-export type RouterOptions<Ctx extends Record<string, unknown>> = {
+export type RuntimeOptions<Ctx extends Record<string, unknown>> = {
   ctx: Ctx;
-  collectionMetadata?: Map<
-    Record<string, unknown>,
-    { originalTarget: Record<string, unknown>; isCollection: boolean }
-  >;
 };
 
-export type QueryFn<
-  Ctx extends Record<string, unknown>,
-  TData = unknown,
-  TParams = unknown,
-> = (opts: RouterOptions<Ctx>, input?: TParams) => Promise<TData>;
+export type DDmushiMeta<Ctx extends Record<string, unknown>> = {
+  _config: {
+    collections: Map<
+      Record<string, unknown>,
+      { originalTarget: Record<string, unknown>; isCollection: boolean }
+    >;
+  };
+} & RuntimeOptions<Ctx>;
 
-export type MutationFn<
+export type ResolverFn<
   Ctx extends Record<string, unknown>,
   TData = unknown,
-  TVariables = unknown,
-> = (opts: RouterOptions<Ctx>, input: TVariables) => Promise<TData>;
+  TInput = unknown,
+> = (resolver: { opts: RuntimeOptions<Ctx>; input?: TInput }) => Promise<TData>;
 
 export interface QueryDefinition<
   Ctx extends Record<string, unknown>,
@@ -33,7 +32,7 @@ export interface QueryDefinition<
   TParams = unknown,
 > {
   queryKey: (params?: TParams) => QueryKey;
-  queryFn: QueryFn<Ctx, TData, TParams>;
+  queryFn: ResolverFn<Ctx, TData, TParams>;
 }
 
 export interface MutationDefinition<
@@ -42,7 +41,7 @@ export interface MutationDefinition<
   TVariables = unknown,
 > {
   mutationKey?: QueryKey;
-  mutationFn: MutationFn<Ctx, TData, TVariables>;
+  mutationFn: ResolverFn<Ctx, TData, TVariables>;
 }
 
 export interface BaseOperation {
@@ -72,7 +71,7 @@ export interface QueryOperation<
   TParams = unknown,
 > extends BaseOperation {
   _operationType: 'query';
-  queryFn: QueryFn<Ctx, TData, TParams>;
+  handler: ResolverFn<Ctx, TData, TParams>;
 }
 
 export interface MutationOperation<
@@ -81,7 +80,7 @@ export interface MutationOperation<
   TVariables = unknown,
 > extends BaseOperation {
   _operationType: 'mutation';
-  mutationFn: MutationFn<Ctx, TData, TVariables>;
+  handler: ResolverFn<Ctx, TData, TVariables>;
 }
 
 export type QueryOptionsBuilder<TData = unknown, TParams = unknown> = (

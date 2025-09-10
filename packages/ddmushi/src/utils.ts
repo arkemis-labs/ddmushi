@@ -3,16 +3,17 @@ import { createInfiniteQueryOptions } from './infinite-query-options';
 import { createMutationOptions } from './mutation-options';
 import { createQueryOptions } from './query-options';
 import type {
+  DDmushiMeta,
   MutationOperation,
   QueryKind,
   QueryOperation,
-  RouterOptions,
 } from './types';
 
 export function createRecursiveProxy<
-  Ctx extends Record<string, unknown>,
+  TMeta extends DDmushiMeta<Record<string, unknown>>,
   T extends Record<string, unknown>,
->(opts: RouterOptions<Ctx>, target: T, path: string[] = []): T {
+>(meta: TMeta, target: T, path: string[] = []): T {
+  const { _config, ...opts } = meta;
   const proxy = new Proxy(target, {
     get(obj, prop) {
       if (typeof prop !== 'string') {
@@ -23,7 +24,7 @@ export function createRecursiveProxy<
       const operation = obj[prop];
 
       if (isQueryOperation(operation)) {
-        const query = operation.queryFn;
+        const query = operation.handler;
         return {
           queryOptions: createQueryOptions(opts, query, currentPath),
           infiniteQueryOptions: createInfiniteQueryOptions(
@@ -38,30 +39,28 @@ export function createRecursiveProxy<
         return {
           mutationOptions: createMutationOptions(
             opts,
-            operation.mutationFn,
+            operation.handler,
             currentPath
           ),
         };
       }
 
       if (isCollection(operation)) {
-        const metadata = opts.collectionMetadata?.get(operation);
+        const metadata = _config.collections.get(operation);
         const targetToProxy = metadata?.originalTarget ?? operation;
 
-        return createRecursiveProxy(opts, targetToProxy, currentPath);
+        return createRecursiveProxy(meta, targetToProxy, currentPath);
       }
 
       return operation;
     },
   });
 
-  // Store metadata if collectionMetadata is available
-  if (opts.collectionMetadata) {
-    opts.collectionMetadata.set(proxy, {
-      originalTarget: target,
-      isCollection: true,
-    });
-  }
+  // track collections
+  _config.collections.set(proxy, {
+    originalTarget: target,
+    isCollection: true,
+  });
 
   return proxy;
 }

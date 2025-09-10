@@ -6,7 +6,7 @@ import {
   type UndefinedInitialDataInfiniteOptions,
   type UnusedSkipTokenInfiniteOptions,
 } from '@tanstack/react-query';
-import type { QueryFn, RouterOptions } from './types';
+import type { ResolverFn, RuntimeOptions } from './types';
 import { buildQueryKey } from './utils';
 
 type AnyInfiniteQueryOptions =
@@ -19,8 +19,8 @@ export function createInfiniteQueryOptions<
   TData = unknown,
   TParams = unknown,
 >(
-  opts: RouterOptions<Ctx>,
-  query: QueryFn<Ctx, TData, TParams>,
+  opts: RuntimeOptions<Ctx>,
+  query: ResolverFn<Ctx, TData, TParams>,
   path: readonly string[]
 ) {
   return (input: TParams, options: AnyInfiniteQueryOptions) => {
@@ -29,10 +29,8 @@ export function createInfiniteQueryOptions<
     const queryFn: QueryFunction<unknown, QueryKey, unknown> = async (
       context
     ) => {
-      return await query(opts, {
-        ...input,
-        pageParam: context.pageParam,
-      } as TParams);
+      // @ts-expect-error - todo: extend ResolverFn to include pageParam
+      return await query({ opts, input, pageParam: context.pageParam });
     };
 
     return infiniteQueryOptions({

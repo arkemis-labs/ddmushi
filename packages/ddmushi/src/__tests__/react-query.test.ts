@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { createRouter } from '../core';
+import { ddmushi } from '../core';
 
 describe('React Query integration', () => {
   describe('Query options generation', () => {
     it('should generate proper query options for basic queries', () => {
-      const router = createRouter({
+      const router = ddmushi.init({
         ctx: {
           apiUrl: 'https://api.example.com',
           token: 'test-token',
         },
       });
 
-      const userApi = router.collection('userApi', {
+      const userApi = router.collection({
         getUser: router.operation.query<{ id: string; name: string }, string>(
-          ({ ctx: _ }, userId) => {
+          ({ input: userId }) => {
             return Promise.resolve({
               id: userId || 'default',
               name: 'John Doe',
@@ -26,7 +26,6 @@ describe('React Query integration', () => {
       const queryOptions = userApi.getUser.queryOptions('user-123');
 
       expect(queryOptions.queryKey).toEqual([
-        'userApi',
         'getUser',
         { input: 'user-123', kind: 'query' },
       ]);
@@ -34,11 +33,11 @@ describe('React Query integration', () => {
     });
 
     it('should generate query options with additional React Query options', () => {
-      const router = createRouter({
+      const router = ddmushi.init({
         ctx: { baseUrl: 'https://api.test.com' },
       });
 
-      const api = router.collection('api', {
+      const api = router.collection({
         getProfile: router.operation.query<{ profile: string }>(() =>
           Promise.resolve({ profile: 'test-profile' })
         ),
@@ -51,24 +50,20 @@ describe('React Query integration', () => {
         retry: 3,
       });
 
-      expect(queryOptions.queryKey).toEqual([
-        'api',
-        'getProfile',
-        { kind: 'query' },
-      ]);
+      expect(queryOptions.queryKey).toEqual(['getProfile', { kind: 'query' }]);
       expect(queryOptions.staleTime).toBe(5 * 60 * 1000);
       expect(queryOptions.gcTime).toBe(10 * 60 * 1000);
       expect(queryOptions.retry).toBe(3);
     });
 
     it('should handle nested collection query options', () => {
-      const router = createRouter({
+      const router = ddmushi.init({
         ctx: { env: 'test' },
       });
 
-      const api = router.collection('api', {
-        users: router.collection('users', {
-          posts: router.collection('posts', {
+      const api = router.collection({
+        users: router.collection({
+          posts: router.collection({
             list: router.operation.query<
               Array<{ id: string; title: string }>,
               { userId: string }
@@ -87,7 +82,6 @@ describe('React Query integration', () => {
       });
 
       expect(queryOptions.queryKey).toEqual([
-        'api',
         'users',
         'posts',
         'list',
@@ -98,11 +92,11 @@ describe('React Query integration', () => {
 
   describe('Infinite query options generation', () => {
     it('should generate proper infinite query options for queries', () => {
-      const router = createRouter({
+      const router = ddmushi.init({
         ctx: { env: 'test' },
       });
 
-      const api = router.collection('api', {
+      const api = router.collection({
         listItems: router.operation.query<
           Array<{ id: string }>,
           { input?: number }
@@ -112,7 +106,6 @@ describe('React Query integration', () => {
       const options = api.listItems.infiniteQueryOptions({ input: 1 });
 
       expect(options.queryKey).toEqual([
-        'api',
         'listItems',
         { input: { input: 1 }, kind: 'infinite' },
       ]);
@@ -121,11 +114,11 @@ describe('React Query integration', () => {
 
   describe('Mutation options generation', () => {
     it('should generate proper mutation options', () => {
-      const router = createRouter({
+      const router = ddmushi.init({
         ctx: { apiKey: 'test-key' },
       });
 
-      const userApi = router.collection('userApi', {
+      const userApi = router.collection({
         createUser: router.operation.mutation<
           { id: string; success: boolean },
           { name: string; email: string }
@@ -137,15 +130,15 @@ describe('React Query integration', () => {
       const mutationOptions = userApi.createUser.mutationOptions();
 
       expect(mutationOptions.mutationFn).toBeTypeOf('function');
-      expect(mutationOptions.mutationKey).toEqual(['userApi', 'createUser']);
+      expect(mutationOptions.mutationKey).toEqual(['createUser']);
     });
 
     it('should support mutation options with additional React Query options', () => {
-      const router = createRouter({
+      const router = ddmushi.init({
         ctx: { database: 'test-db' },
       });
 
-      const postApi = router.collection('postApi', {
+      const postApi = router.collection({
         updatePost: router.operation.mutation<
           { updated: boolean },
           { id: string; title: string }
@@ -168,18 +161,18 @@ describe('React Query integration', () => {
 
   describe('Query execution', () => {
     it('should execute queries with proper context and parameters', async () => {
-      const router = createRouter({
+      const router = ddmushi.init({
         ctx: {
           userId: 'current-user',
           permissions: ['read', 'write'],
         },
       });
 
-      const dataApi = router.collection('dataApi', {
+      const dataApi = router.collection({
         getData: router.operation.query<
           { items: string[]; user: string },
           { category: string }
-        >(({ ctx }, params) => {
+        >(({ opts: { ctx }, input: params }) => {
           return Promise.resolve({
             items: [`item-${params?.category || 'default'}`],
             user: ctx.userId,
@@ -200,15 +193,15 @@ describe('React Query integration', () => {
     });
 
     it('should handle queries without parameters', async () => {
-      const router = createRouter({
+      const router = ddmushi.init({
         ctx: { version: '2.0.0' },
       });
 
-      const appApi = router.collection('appApi', {
+      const appApi = router.collection({
         getVersion: router.operation.query<{
           version: string;
           timestamp: number;
-        }>(({ ctx }) =>
+        }>(({ opts: { ctx } }) =>
           Promise.resolve({
             version: ctx.version,
             timestamp: Date.now(),
@@ -229,18 +222,18 @@ describe('React Query integration', () => {
 
   describe('Type safety', () => {
     it('should maintain proper TypeScript types through the chain', () => {
-      const router = createRouter({
+      const router = ddmushi.init({
         ctx: {
           database: 'test-db',
           user: { id: 'user-123', role: 'admin' as const },
         },
       });
 
-      const typedApi = router.collection('typedApi', {
+      const typedApi = router.collection({
         getUser: router.operation.query<
           { id: string; name: string; role: 'admin' | 'user' },
           { userId: string }
-        >(({ ctx }, params) => {
+        >(({ opts: { ctx }, input: params }) => {
           // TypeScript should infer the correct types here
           const userId: string = params?.userId || ctx.user.id;
           const userRole: 'admin' | 'user' = ctx.user.role;
@@ -261,7 +254,6 @@ describe('React Query integration', () => {
       // This should be typed correctly
       expect(queryOptions).toBeDefined();
       expect(queryOptions.queryKey).toEqual([
-        'typedApi',
         'getUser',
         { input: { userId: 'test-123' }, kind: 'query' },
       ]);
