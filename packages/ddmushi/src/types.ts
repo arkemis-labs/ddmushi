@@ -107,3 +107,5 @@ export type InfiniteQueryOptionsBuilder<TData = unknown, TParams = unknown> = <
 export type MutationOptionsBuilder<TData = unknown, TVariables = unknown> = (
   options?: Partial<UseMutationOptions<TData, Error, TVariables>>
 ) => UseMutationOptions<TData, Error, TVariables>;
+
+export type QueryKind = 'query' | 'infinite';

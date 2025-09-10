@@ -25,7 +25,11 @@ describe('React Query integration', () => {
       // Test query options generation
       const queryOptions = userApi.getUser.queryOptions('user-123');
 
-      expect(queryOptions.queryKey).toEqual(['userApi', 'getUser', 'user-123']);
+      expect(queryOptions.queryKey).toEqual([
+        'userApi',
+        'getUser',
+        { input: 'user-123', kind: 'query' },
+      ]);
       expect(queryOptions.queryFn).toBeTypeOf('function');
     });
 
@@ -47,7 +51,11 @@ describe('React Query integration', () => {
         retry: 3,
       });
 
-      expect(queryOptions.queryKey).toEqual(['api', 'getProfile']);
+      expect(queryOptions.queryKey).toEqual([
+        'api',
+        'getProfile',
+        { kind: 'query' },
+      ]);
       expect(queryOptions.staleTime).toBe(5 * 60 * 1000);
       expect(queryOptions.gcTime).toBe(10 * 60 * 1000);
       expect(queryOptions.retry).toBe(3);
@@ -83,7 +91,7 @@ describe('React Query integration', () => {
         'users',
         'posts',
         'list',
-        { userId: 'user-123' },
+        { input: { userId: 'user-123' }, kind: 'query' },
       ]);
     });
   });
@@ -103,7 +111,11 @@ describe('React Query integration', () => {
 
       const options = api.listItems.infiniteQueryOptions({ input: 1 });
 
-      expect(options.queryKey).toEqual(['api', 'listItems', { input: 1 }]);
+      expect(options.queryKey).toEqual([
+        'api',
+        'listItems',
+        { input: { input: 1 }, kind: 'infinite' },
+      ]);
     });
   });
 
@@ -125,7 +137,7 @@ describe('React Query integration', () => {
       const mutationOptions = userApi.createUser.mutationOptions();
 
       expect(mutationOptions.mutationFn).toBeTypeOf('function');
-      expect(mutationOptions.mutationKey).toBeUndefined();
+      expect(mutationOptions.mutationKey).toEqual(['userApi', 'createUser']);
     });
 
     it('should support mutation options with additional React Query options', () => {
@@ -251,7 +263,7 @@ describe('React Query integration', () => {
       expect(queryOptions.queryKey).toEqual([
         'typedApi',
         'getUser',
-        { userId: 'test-123' },
+        { input: { userId: 'test-123' }, kind: 'query' },
       ]);
     });
   });
