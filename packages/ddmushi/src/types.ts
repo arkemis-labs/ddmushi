@@ -1,7 +1,9 @@
 import type {
   QueryKey,
+  UseInfiniteQueryOptions,
   UseMutationOptions,
   UseQueryOptions,
+  UseSuspenseInfiniteQueryOptions,
   UseSuspenseQueryOptions,
 } from '@tanstack/react-query';
 
@@ -53,7 +55,10 @@ export type Collection<T> = {
     infer Data,
     infer Params
   >
-    ? { queryOptions: QueryOptionsBuilder<Data, Params> }
+    ? {
+        queryOptions: QueryOptionsBuilder<Data, Params>;
+        infiniteQueryOptions: InfiniteQueryOptionsBuilder<Data, Params>;
+      }
     : T[K] extends MutationOperation<infer _Ctx, infer Data, infer Variables>
       ? { mutationOptions: MutationOptionsBuilder<Data, Variables> }
       : T[K] extends Record<string, unknown>
@@ -87,6 +92,17 @@ export type QueryOptionsBuilder<TData = unknown, TParams = unknown> = (
   >
 ) => UseQueryOptions<TData, Error, TData, QueryKey> &
   UseSuspenseQueryOptions<TData, Error, TData, QueryKey>;
+
+export type InfiniteQueryOptionsBuilder<TData = unknown, TParams = unknown> = <
+  TPageParam = unknown,
+>(
+  params?: TParams,
+  options?: Partial<
+    UseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam> &
+      UseSuspenseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam>
+  >
+) => UseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam> &
+  UseSuspenseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam>;
 
 export type MutationOptionsBuilder<TData = unknown, TVariables = unknown> = (
   options?: Partial<UseMutationOptions<TData, Error, TVariables>>
