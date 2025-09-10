@@ -1,15 +1,10 @@
+import type { QueryKey } from '@tanstack/react-query';
+import { createInfiniteQueryOptions } from './infinite-query-options';
+import { createMutationOptions } from './mutation-options';
+import { createQueryOptions } from './query-options';
 import type {
-  QueryFunction,
-  QueryKey,
-  UseInfiniteQueryOptions,
-  UseMutationOptions,
-  UseQueryOptions,
-  UseSuspenseInfiniteQueryOptions,
-  UseSuspenseQueryOptions,
-} from '@tanstack/react-query';
-import type {
-  MutationDefinition,
   MutationOperation,
+  QueryKind,
   QueryOperation,
   RouterOptions,
 } from './types';
@@ -25,36 +20,38 @@ export function createRecursiveProxy<
       }
 
       const currentPath = [...path, prop];
-      const value = obj[prop];
+      const operation = obj[prop];
 
-      if (isQueryOperation(value)) {
+      if (isQueryOperation(operation)) {
+        const query = operation.queryFn;
         return {
-          queryOptions: createQueryOptions(opts, value, currentPath),
+          queryOptions: createQueryOptions(opts, query, currentPath),
           infiniteQueryOptions: createInfiniteQueryOptions(
             opts,
-            value,
+            query,
             currentPath
           ),
         };
       }
 
-      if (isMutationOperation(value)) {
-        const mutationDefinition: MutationDefinition<Ctx> = {
-          mutationFn: value.mutationFn,
-        };
+      if (isMutationOperation(operation)) {
         return {
-          mutationOptions: createMutationOptions(opts, mutationDefinition),
+          mutationOptions: createMutationOptions(
+            opts,
+            operation.mutationFn,
+            currentPath
+          ),
         };
       }
 
-      if (isCollection(value)) {
-        const metadata = opts.collectionMetadata?.get(value);
-        const targetToProxy = metadata?.originalTarget ?? value;
+      if (isCollection(operation)) {
+        const metadata = opts.collectionMetadata?.get(operation);
+        const targetToProxy = metadata?.originalTarget ?? operation;
 
         return createRecursiveProxy(opts, targetToProxy, currentPath);
       }
 
-      return value;
+      return operation;
     },
   });
 
@@ -67,111 +64,6 @@ export function createRecursiveProxy<
   }
 
   return proxy;
-}
-
-export function createMutationOptions<
-  Ctx extends Record<string, unknown>,
-  TData = unknown,
-  TVariables = unknown,
->(
-  opts: RouterOptions<Ctx>,
-  definition: MutationDefinition<Ctx, TData, TVariables>
-) {
-  return (
-    options?: Partial<UseMutationOptions<TData, Error, TVariables>>
-  ): UseMutationOptions<TData, Error, TVariables> => {
-    return {
-      mutationKey: definition.mutationKey,
-      mutationFn: (input: TVariables) => definition.mutationFn(opts, input),
-      ...options,
-    };
-  };
-}
-
-export function createQueryOptions<
-  Ctx extends Record<string, unknown>,
-  TData = unknown,
-  TParams = unknown,
->(
-  opts: RouterOptions<Ctx>,
-  operation: QueryOperation<Ctx, TData, TParams>,
-  path: string[]
-) {
-  return (
-    input?: TParams,
-    options?: Partial<
-      UseQueryOptions<TData, Error, TData, QueryKey> &
-        UseSuspenseQueryOptions<TData, Error, TData, QueryKey>
-    >
-  ): UseQueryOptions<TData, Error, TData, QueryKey> &
-    UseSuspenseQueryOptions<TData, Error, TData, QueryKey> => {
-    const queryKey = input !== undefined ? [...path, input] : path;
-
-    return {
-      queryKey,
-      queryFn: () => operation.queryFn(opts, input),
-      ...options,
-    } as UseQueryOptions<TData, Error, TData, QueryKey> &
-      UseSuspenseQueryOptions<TData, Error, TData, QueryKey>;
-  };
-}
-
-export function createInfiniteQueryOptions<
-  Ctx extends Record<string, unknown>,
-  TData = unknown,
-  TParams = unknown,
-  TPageParam = unknown,
->(
-  opts: RouterOptions<Ctx>,
-  operation: QueryOperation<Ctx, TData, TParams>,
-  path: string[]
-) {
-  return (
-    input?: TParams,
-    options?: Partial<
-      UseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam> &
-        UseSuspenseInfiniteQueryOptions<
-          TData,
-          Error,
-          TData,
-          QueryKey,
-          TPageParam
-        >
-    >
-  ):
-    | UseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam>
-    | UseSuspenseInfiniteQueryOptions<
-        TData,
-        Error,
-        TData,
-        QueryKey,
-        TPageParam
-      > => {
-    const queryKey = input !== undefined ? [...path, input] : path;
-
-    const queryFn: QueryFunction<unknown, QueryKey, unknown> = async (
-      context
-    ) => {
-      return await operation.queryFn(opts, {
-        ...input,
-        pageParam: context.pageParam,
-      } as TParams);
-    };
-
-    return {
-      queryKey,
-      queryFn,
-      ...options,
-    } as unknown as
-      | UseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam>
-      | UseSuspenseInfiniteQueryOptions<
-          TData,
-          Error,
-          TData,
-          QueryKey,
-          TPageParam
-        >;
-  };
 }
 
 function isCollection(value: unknown): value is Record<string, unknown> {
@@ -204,6 +96,24 @@ function isMutationOperation(
   );
 }
 
-export function buildQueryKey(path: string[], params?: unknown): QueryKey {
-  return params !== undefined ? [...path, params] : path;
+export function buildQueryKey(
+  path: readonly string[],
+  input: unknown,
+  kind?: QueryKind
+): QueryKey {
+  if (!(input || kind)) {
+    return path.length ? path : [];
+  }
+
+  return [
+    ...path,
+    {
+      ...(typeof input !== 'undefined' && { input }),
+      kind,
+    },
+  ];
+}
+
+export function buildMutationKey(path: readonly string[]) {
+  return buildQueryKey(path, undefined);
 }
