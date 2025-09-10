@@ -88,6 +88,25 @@ describe('React Query integration', () => {
     });
   });
 
+  describe('Infinite query options generation', () => {
+    it('should generate proper infinite query options for queries', () => {
+      const router = createRouter({
+        ctx: { env: 'test' },
+      });
+
+      const api = router.collection('api', {
+        listItems: router.operation.query<
+          Array<{ id: string }>,
+          { input?: number }
+        >(() => Promise.resolve([{ id: '1' }])),
+      });
+
+      const options = api.listItems.infiniteQueryOptions({ input: 1 });
+
+      expect(options.queryKey).toEqual(['api', 'listItems', { input: 1 }]);
+    });
+  });
+
   describe('Mutation options generation', () => {
     it('should generate proper mutation options', () => {
       const router = createRouter({

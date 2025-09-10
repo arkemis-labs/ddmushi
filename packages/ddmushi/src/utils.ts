@@ -1,7 +1,10 @@
 import type {
+  QueryFunction,
   QueryKey,
+  UseInfiniteQueryOptions,
   UseMutationOptions,
   UseQueryOptions,
+  UseSuspenseInfiniteQueryOptions,
   UseSuspenseQueryOptions,
 } from '@tanstack/react-query';
 import type {
@@ -27,6 +30,11 @@ export function createRecursiveProxy<
       if (isQueryOperation(value)) {
         return {
           queryOptions: createQueryOptions(opts, value, currentPath),
+          infiniteQueryOptions: createInfiniteQueryOptions(
+            opts,
+            value,
+            currentPath
+          ),
         };
       }
 
@@ -105,6 +113,64 @@ export function createQueryOptions<
       ...options,
     } as UseQueryOptions<TData, Error, TData, QueryKey> &
       UseSuspenseQueryOptions<TData, Error, TData, QueryKey>;
+  };
+}
+
+export function createInfiniteQueryOptions<
+  Ctx extends Record<string, unknown>,
+  TData = unknown,
+  TParams = unknown,
+  TPageParam = unknown,
+>(
+  opts: RouterOptions<Ctx>,
+  operation: QueryOperation<Ctx, TData, TParams>,
+  path: string[]
+) {
+  return (
+    input?: TParams,
+    options?: Partial<
+      UseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam> &
+        UseSuspenseInfiniteQueryOptions<
+          TData,
+          Error,
+          TData,
+          QueryKey,
+          TPageParam
+        >
+    >
+  ):
+    | UseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam>
+    | UseSuspenseInfiniteQueryOptions<
+        TData,
+        Error,
+        TData,
+        QueryKey,
+        TPageParam
+      > => {
+    const queryKey = input !== undefined ? [...path, input] : path;
+
+    const queryFn: QueryFunction<unknown, QueryKey, unknown> = async (
+      context
+    ) => {
+      return await operation.queryFn(opts, {
+        ...input,
+        pageParam: context.pageParam,
+      } as TParams);
+    };
+
+    return {
+      queryKey,
+      queryFn,
+      ...options,
+    } as unknown as
+      | UseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam>
+      | UseSuspenseInfiniteQueryOptions<
+          TData,
+          Error,
+          TData,
+          QueryKey,
+          TPageParam
+        >;
   };
 }
 
