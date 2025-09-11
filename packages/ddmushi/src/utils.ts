@@ -2,12 +2,7 @@ import type { QueryKey } from '@tanstack/react-query';
 import { createInfiniteQueryOptions } from './infinite-query-options';
 import { createMutationOptions } from './mutation-options';
 import { createQueryOptions } from './query-options';
-import type {
-  DDmushiMeta,
-  MutationOperation,
-  QueryKind,
-  QueryOperation,
-} from './types';
+import type { DDmushiMeta, Operation, QueryKind } from './types';
 
 export function createRecursiveProxy<
   TMeta extends DDmushiMeta<Record<string, unknown>>,
@@ -71,7 +66,7 @@ function isCollection(value: unknown): value is Record<string, unknown> {
 
 function isQueryOperation(
   definition: unknown
-): definition is QueryOperation<Record<string, unknown>, unknown, unknown> {
+): definition is Operation<'query', Record<string, unknown>, unknown, unknown> {
   return Boolean(
     definition &&
       typeof definition === 'object' &&
@@ -84,7 +79,12 @@ function isQueryOperation(
 
 function isMutationOperation(
   definition: unknown
-): definition is MutationOperation<Record<string, unknown>, unknown, unknown> {
+): definition is Operation<
+  'mutation',
+  Record<string, unknown>,
+  unknown,
+  unknown
+> {
   return Boolean(
     definition &&
       typeof definition === 'object' &&

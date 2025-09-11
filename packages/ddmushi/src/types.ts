@@ -44,12 +44,22 @@ export interface MutationDefinition<
   mutationFn: ResolverFn<Ctx, TData, TVariables>;
 }
 
-export interface BaseOperation {
+export type OperationType = 'query' | 'mutation';
+
+export interface Operation<
+  TType extends OperationType,
+  Ctx extends Record<string, unknown>,
+  TData = unknown,
+  TParams = unknown,
+> {
   _type: 'operation';
+  _operationType: TType;
+  handler: ResolverFn<Ctx, TData, TParams>;
 }
 
 export type Collection<T> = {
-  [K in keyof T]: T[K] extends QueryOperation<
+  [K in keyof T]: T[K] extends Operation<
+    'query',
     infer _Ctx,
     infer Data,
     infer Params
@@ -58,30 +68,17 @@ export type Collection<T> = {
         queryOptions: QueryOptionsBuilder<Data, Params>;
         infiniteQueryOptions: InfiniteQueryOptionsBuilder<Data, Params>;
       }
-    : T[K] extends MutationOperation<infer _Ctx, infer Data, infer Variables>
+    : T[K] extends Operation<
+          'mutation',
+          infer _Ctx,
+          infer Data,
+          infer Variables
+        >
       ? { mutationOptions: MutationOptionsBuilder<Data, Variables> }
       : T[K] extends Record<string, unknown>
         ? Collection<T[K]>
         : T[K];
 };
-
-export interface QueryOperation<
-  Ctx extends Record<string, unknown>,
-  TData = unknown,
-  TParams = unknown,
-> extends BaseOperation {
-  _operationType: 'query';
-  handler: ResolverFn<Ctx, TData, TParams>;
-}
-
-export interface MutationOperation<
-  Ctx extends Record<string, unknown>,
-  TData = unknown,
-  TVariables = unknown,
-> extends BaseOperation {
-  _operationType: 'mutation';
-  handler: ResolverFn<Ctx, TData, TVariables>;
-}
 
 export type QueryOptionsBuilder<TData = unknown, TParams = unknown> = (
   params?: TParams,
@@ -108,3 +105,8 @@ export type MutationOptionsBuilder<TData = unknown, TVariables = unknown> = (
 ) => UseMutationOptions<TData, Error, TVariables>;
 
 export type QueryKind = 'query' | 'infinite';
+
+export type Middleware<C extends Record<string, unknown>> = (input: {
+  ctx: C;
+  next: (context: C & any) => Promise<unknown>;
+}) => Promise<unknown>;
