@@ -6,6 +6,17 @@ import type {
   UseSuspenseInfiniteQueryOptions,
   UseSuspenseQueryOptions,
 } from '@tanstack/react-query';
+import type { AnyParser } from './parser';
+
+export type InferParserInput<T> = T extends { _input: infer I }
+  ? I
+  : T extends {
+        '~standard': {
+          validate: (input: infer I) => { value: any } | { issues: any };
+        };
+      }
+    ? I
+    : unknown;
 
 export type RuntimeOptions<Ctx extends Record<string, unknown>> = {
   ctx: Ctx;
@@ -24,7 +35,7 @@ export type ResolverFn<
   Ctx extends Record<string, unknown>,
   TData = unknown,
   TInput = unknown,
-> = (resolver: { opts: RuntimeOptions<Ctx>; input?: TInput }) => Promise<TData>;
+> = (opts: RuntimeOptions<Ctx> & { input: TInput }) => Promise<TData>;
 
 export interface QueryDefinition<
   Ctx extends Record<string, unknown>,
@@ -106,7 +117,19 @@ export type MutationOptionsBuilder<TData = unknown, TVariables = unknown> = (
 
 export type QueryKind = 'query' | 'infinite';
 
-export type Middleware<C extends Record<string, unknown>> = (input: {
-  ctx: C;
-  next: (context: C & any) => Promise<unknown>;
+export type MiddlewareOpts<
+  Ctx extends Record<string, unknown>,
+  TInput = unknown,
+> = {
+  ctx: Ctx;
+  input: TInput;
+  output?: AnyParser;
+};
+
+export type Middleware<
+  C extends Record<string, unknown>,
+  TInput = unknown,
+> = (input: {
+  opts: MiddlewareOpts<C, TInput>;
+  next: (opts: MiddlewareOpts<C, TInput>) => Promise<unknown>;
 }) => Promise<unknown>;

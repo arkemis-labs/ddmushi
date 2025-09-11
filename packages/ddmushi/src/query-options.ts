@@ -26,7 +26,7 @@ export function createQueryOptions<
   return (input: TParams, options: AnyQueryOptions) => {
     const queryKey = buildQueryKey(path, input, 'query');
     const queryFn: QueryFunction<unknown, QueryKey> = async () => {
-      return await query({ opts, input });
+      return await query({ ...opts, input });
     };
 
     return queryOptions({

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { ddmushi } from '../core';
 import type { Middleware } from '../types';
 
@@ -26,7 +27,7 @@ describe('ddmushi core functionality', () => {
       });
 
       const queryOp = router.operation.query<string, { id: string }>(
-        ({ input, opts: { ctx } }) => {
+        ({ input, ctx }) => {
           return Promise.resolve(input?.id || ctx.test);
         }
       );
@@ -65,7 +66,7 @@ describe('ddmushi core functionality', () => {
 
       const userCollection = router.collection({
         getUser: router.operation.query<{ id: string; name: string }, string>(
-          ({ input, opts: { ctx } }) => {
+          ({ input, ctx }) => {
             return Promise.resolve({
               id: input || ctx.userId,
               name: 'Test User',
@@ -92,15 +93,12 @@ describe('ddmushi core functionality', () => {
 
       const api = router.collection({
         users: router.collection({
-          list: router.operation.query<Array<{ id: string }>, void>(() => {
+          list: router.operation.query<Array<{ id: string }>>(() => {
             return Promise.resolve([{ id: '1' }, { id: '2' }]);
           }),
         }),
         posts: router.collection({
-          create: router.operation.mutation<
-            { id: string },
-            { title: string; content: string }
-          >(() => {
+          create: router.operation.mutation<{ id: string }>(() => {
             return Promise.resolve({ id: 'post-123' });
           }),
         }),
@@ -124,24 +122,24 @@ describe('ddmushi core functionality', () => {
       const router = ddmushi.init({ ctx: mockCtx });
 
       // Create a query operation that uses the context
-      const testQuery = router.operation.query<
-        { data: string; user: string },
-        { filter: string }
-      >(async ({ input, opts: { ctx } }) => {
+      const testQuery = router.operation.query<{
+        data: string;
+        user: string;
+      }>(async ({ input, ctx }) => {
         // Context should be properly typed and available
         expect(ctx.database).toBe('test-db');
         expect(ctx.currentUser.id).toBe('user-123');
         expect(ctx.config.timeout).toBe(5000);
 
         return await Promise.resolve({
-          data: `Filtered by: ${input?.filter || 'none'}`,
+          data: `Filtered by: ${(input as any)?.filter || 'none'}`,
           user: ctx.currentUser.id,
         });
       });
 
       // Test the query function directly
       const result = await testQuery.handler({
-        opts: { ctx: mockCtx },
+        ctx: mockCtx,
         input: { filter: 'active' },
       });
 
@@ -157,13 +155,13 @@ describe('ddmushi core functionality', () => {
         ctx: { version: '1.0.0' },
       });
 
-      const simpleQuery = simpleRouter.operation.query<
-        { version: string },
-        void
-      >(async ({ opts: { ctx } }) => ({ version: ctx.version }));
+      const simpleQuery = simpleRouter.operation.query<{ version: string }>(
+        async ({ ctx }) => ({ version: ctx.version })
+      );
 
       const result = await simpleQuery.handler({
-        opts: { ctx: { version: '1.0.0' } },
+        ctx: { version: '1.0.0' },
+        input: undefined,
       });
       expect(result.version).toBe('1.0.0');
     });
@@ -180,19 +178,20 @@ describe('ddmushi core functionality', () => {
 
       // Create operation with middleware
       const protectedQuery = router.operation
-        .use(async ({ ctx, next }) => {
-          if (!ctx.isAuthenticated) {
+        .use(async ({ opts, next }) => {
+          if (!opts.ctx.isAuthenticated) {
             throw new Error('Unauthorized: User must be authenticated');
           }
-          return await next(ctx);
+          return await next(opts);
         })
-        .query<{ message: string }, void>(async ({ opts: { ctx } }) => {
+        .query<{ message: string }, void>(async ({ ctx }) => {
           return await Promise.resolve({ message: `Hello ${ctx.user?.id}` });
         });
 
       await expect(
         protectedQuery.handler({
-          opts: { ctx: { user: null, isAuthenticated: false } },
+          ctx: { user: null, isAuthenticated: false },
+          input: undefined,
         })
       ).rejects.toThrow('Unauthorized: User must be authenticated');
 
@@ -202,7 +201,8 @@ describe('ddmushi core functionality', () => {
       };
 
       const result = await protectedQuery.handler({
-        opts: { ctx: authenticatedCtx },
+        ctx: authenticatedCtx,
+        input: undefined,
       });
 
       expect(result.message).toBe('Hello user-123');
@@ -220,25 +220,26 @@ describe('ddmushi core functionality', () => {
       });
 
       const loggedQuery = router.operation
-        .use(async ({ ctx, next }) => {
+        .use(async ({ opts, next }) => {
           const startTime = Date.now();
           logs.push({ operation: 'start', timestamp: new Date() });
 
-          const result = await next(ctx);
+          const result = await next(opts);
 
           const duration = Date.now() - startTime;
           logs.push({ operation: 'end', timestamp: new Date(), duration });
 
           return result;
         })
-        .query<{ data: string }, void>(async ({ opts: { ctx } }) => {
+        .query<{ data: string }, void>(async ({ ctx }) => {
           // Simulate some work
           await new Promise((resolve) => setTimeout(resolve, 10));
           return { data: `Request ${ctx.requestId} processed` };
         });
 
       await loggedQuery.handler({
-        opts: { ctx: { requestId: 'req-123' } },
+        ctx: { requestId: 'req-123' },
+        input: undefined,
       });
 
       expect(logs).toHaveLength(2);
@@ -252,15 +253,17 @@ describe('ddmushi core functionality', () => {
       });
 
       // Create validation middleware
-      const validationMiddleware: Middleware<any> = async ({ ctx, next }) => {
-        if (!ctx.validationEnabled) {
-          return await next(ctx);
+      const validationMiddleware: Middleware<any> = async ({ opts, next }) => {
+        if (!opts.ctx.validationEnabled) {
+          return await next(opts);
         }
 
         // Add validation context
         return await next({
-          ...ctx,
-          validated: true,
+          ...opts,
+          ctx: {
+            validated: true,
+          },
         });
       };
 
@@ -269,7 +272,7 @@ describe('ddmushi core functionality', () => {
         .mutation<
           { success: boolean; validated: boolean },
           { email: string; password: string }
-        >(async ({ input, opts: { ctx } }) => {
+        >(async ({ input, ctx }) => {
           if (!input?.email?.includes('@')) {
             throw new Error('Invalid email format');
           }
@@ -286,14 +289,14 @@ describe('ddmushi core functionality', () => {
       // Test with invalid input
       await expect(
         validatedMutation.handler({
-          opts: { ctx: { validationEnabled: true } },
+          ctx: { validationEnabled: true },
           input: { email: 'invalid-email', password: '123' },
         })
       ).rejects.toThrow('Invalid email format');
 
       // Test with valid input
       const result = await validatedMutation.handler({
-        opts: { ctx: { validationEnabled: true } },
+        ctx: { validationEnabled: true },
         input: { email: 'test@example.com', password: 'password123' },
       });
 
@@ -307,18 +310,15 @@ describe('ddmushi core functionality', () => {
       });
 
       // Create error handling middleware
-      const errorHandlingMiddleware = async ({
-        ctx,
+      const errorHandlingMiddleware: Middleware<any> = async ({
+        opts,
         next,
-      }: {
-        ctx: typeof router._meta.ctx;
-        next: (ctx: typeof router._meta.ctx) => Promise<unknown>;
       }) => {
         try {
-          return await next(ctx);
+          return await next(opts);
         } catch (error) {
           if (
-            ctx.environment === 'production' &&
+            opts.ctx.environment === 'production' &&
             error instanceof Error &&
             error.message.includes('Database')
           ) {
@@ -341,14 +341,14 @@ describe('ddmushi core functionality', () => {
       // Test error transformation in production
       await expect(
         errorProneQuery.handler({
-          opts: { ctx: { environment: 'production' } },
+          ctx: { environment: 'production' },
           input: { shouldFail: true },
         })
       ).rejects.toThrow('Internal server error');
 
       // Test normal operation
       const result = await errorProneQuery.handler({
-        opts: { ctx: { environment: 'production' } },
+        ctx: { environment: 'production' },
         input: { shouldFail: false },
       });
 
@@ -363,31 +363,34 @@ describe('ddmushi core functionality', () => {
       });
 
       // First middleware
-      const middleware1 = async ({
-        ctx,
-        next,
-      }: {
-        ctx: any;
-        next: (ctx: any) => Promise<unknown>;
-      }) => {
+      const middleware1: Middleware<any> = async ({ opts, next }) => {
         executionOrder.push('middleware1-before');
-        const result = await next({ ...ctx, step1: true });
+        const result = await next({
+          ...opts,
+          ctx: { ...opts.ctx, step1: true },
+        });
         executionOrder.push('middleware1-after');
         return result;
       };
 
       // Second middleware
-      const middleware2: Middleware<any> = async ({ ctx, next }) => {
+      const middleware2: Middleware<any> = async ({ opts, next }) => {
         executionOrder.push('middleware2-before');
-        const result = await next({ ...ctx, step2: true });
+        const result = await next({
+          ...opts,
+          ctx: { ...opts.ctx, step2: true },
+        });
         executionOrder.push('middleware2-after');
         return result;
       };
 
       // Third middleware
-      const middleware3: Middleware<any> = async ({ ctx, next }) => {
+      const middleware3: Middleware<any> = async ({ opts, next }) => {
         executionOrder.push('middleware3-before');
-        const result = await next({ ...ctx, step3: true });
+        const result = await next({
+          ...opts,
+          ctx: { ...opts.ctx, step3: true },
+        });
         executionOrder.push('middleware3-after');
         return result;
       };
@@ -396,7 +399,7 @@ describe('ddmushi core functionality', () => {
         .use(middleware1)
         .use(middleware2)
         .use(middleware3)
-        .query<{ steps: boolean[] }, void>(async ({ opts: { ctx } }) => {
+        .query<{ steps: boolean[] }, void>(async ({ ctx }) => {
           executionOrder.push('handler-executed');
           return await {
             steps: [(ctx as any).step1, (ctx as any).step2, (ctx as any).step3],
@@ -404,7 +407,8 @@ describe('ddmushi core functionality', () => {
         });
 
       const result = await composedQuery.handler({
-        opts: { ctx: { test: 'value' } },
+        ctx: { test: 'value' },
+        input: undefined,
       });
 
       // Verify execution order (onion-like pattern)
@@ -430,39 +434,38 @@ describe('ddmushi core functionality', () => {
       });
 
       // User enrichment middleware
-      const userEnrichmentMiddleware = async ({
-        ctx,
+      const userEnrichmentMiddleware: Middleware<any> = async ({
+        opts,
         next,
-      }: {
-        ctx: any;
-        next: (ctx: any) => Promise<unknown>;
       }) => {
         const enrichedUser = {
-          ...ctx.rawUser,
-          isAdmin: ctx.rawUser.role === 'admin',
-          displayName: `${ctx.rawUser.name} (${ctx.rawUser.role})`,
+          ...opts.ctx.rawUser,
+          isAdmin: opts.ctx.rawUser.role === 'admin',
+          displayName: `${opts.ctx.rawUser.name} (${opts.ctx.rawUser.role})`,
         };
 
         return await next({
-          ...ctx,
-          user: enrichedUser,
+          ...opts,
+          ctx: {
+            ...opts.ctx,
+            user: enrichedUser,
+          },
         });
       };
 
       // Permission loading middleware
-      const permissionMiddleware = async ({
-        ctx,
-        next,
-      }: {
-        ctx: any;
-        next: (ctx: any) => Promise<unknown>;
-      }) => {
+      const permissionMiddleware: Middleware<any> = async ({ opts, next }) => {
         const permissions =
-          ctx.user?.role === 'admin' ? ['read', 'write', 'delete'] : ['read'];
+          opts.ctx.user?.role === 'admin'
+            ? ['read', 'write', 'delete']
+            : ['read'];
 
         return await next({
-          ...ctx,
-          permissions,
+          ...opts,
+          ctx: {
+            ...opts.ctx,
+            permissions,
+          },
         });
       };
 
@@ -476,7 +479,7 @@ describe('ddmushi core functionality', () => {
             canDelete: boolean;
           },
           void
-        >(async ({ opts: { ctx } }) => {
+        >(async ({ ctx }) => {
           return await {
             user: (ctx as any).user,
             permissions: (ctx as any).permissions,
@@ -485,12 +488,11 @@ describe('ddmushi core functionality', () => {
         });
 
       const result = await enrichedQuery.handler({
-        opts: {
-          ctx: {
-            rawUser: { id: '123', name: 'John', role: 'user' },
-            permissions: [],
-          },
+        ctx: {
+          rawUser: { id: '123', name: 'John', role: 'user' },
+          permissions: [],
         },
+        input: undefined,
       });
 
       expect(result.user.displayName).toBe('John (user)');
@@ -504,17 +506,11 @@ describe('ddmushi core functionality', () => {
         ctx: { shouldFail: true },
       });
 
-      const failingMiddleware = async ({
-        ctx,
-        next,
-      }: {
-        ctx: any;
-        next: (ctx: any) => Promise<unknown>;
-      }) => {
-        if (ctx.shouldFail) {
+      const failingMiddleware: Middleware<any> = async ({ opts, next }) => {
+        if (opts.ctx.shouldFail) {
           throw new Error('Middleware failure');
         }
-        return await next(ctx);
+        return await next(opts);
       };
 
       const queryWithFailingMiddleware = router.operation
@@ -525,16 +521,147 @@ describe('ddmushi core functionality', () => {
 
       await expect(
         queryWithFailingMiddleware.handler({
-          opts: { ctx: { shouldFail: true } },
+          ctx: { shouldFail: true },
+          input: undefined,
         })
       ).rejects.toThrow('Middleware failure');
 
       // Test that it works when middleware doesn't fail
       const result = await queryWithFailingMiddleware.handler({
-        opts: { ctx: { shouldFail: false } },
+        ctx: { shouldFail: false },
+        input: undefined,
       });
 
       expect(result.data).toBe('This should not execute');
+    });
+  });
+
+  describe('Input/Output validation', () => {
+    it('should validate input with Zod schema', async () => {
+      const router = ddmushi.init({
+        ctx: {},
+      });
+
+      const inputSchema = z.object({
+        email: z.string(),
+        age: z.number().min(18),
+      });
+
+      const query = router.operation
+        .input(inputSchema)
+        .query<{ message: string }>((opts) => {
+          return Promise.resolve({
+            message: `Hello ${opts.input.email}, you are ${opts.input.age} years old`,
+          });
+        });
+
+      // Test with valid input
+      const result = await query.handler({
+        ctx: {},
+        input: { email: 'test@example.com', age: 25 },
+      });
+      expect(result).toEqual({
+        message: 'Hello test@example.com, you are 25 years old',
+      });
+
+      // Test with invalid input (should throw validation error)
+      await expect(
+        query.handler({
+          ctx: {},
+          input: { email: 'invalid-email', age: 16 },
+        })
+      ).rejects.toThrow();
+    });
+
+    it('should validate output with Zod schema', async () => {
+      const router = ddmushi.init({
+        ctx: {},
+      });
+
+      const outputSchema = z.object({
+        data: z.string(),
+        timestamp: z.number(),
+      });
+
+      const query = router.operation
+        .output(outputSchema)
+        .query<{ data: string; timestamp: number }>(() => {
+          return Promise.resolve({
+            data: 'test data',
+            timestamp: Date.now(),
+          });
+        });
+
+      const result = await query.handler({ ctx: {}, input: undefined });
+      expect(result).toHaveProperty('data', 'test data');
+      expect(result).toHaveProperty('timestamp');
+      expect(typeof result.timestamp).toBe('number');
+    });
+
+    it('should work with both input and output validation', async () => {
+      const router = ddmushi.init({
+        ctx: {},
+      });
+
+      const inputSchema = z.object({
+        name: z.string().min(1),
+      });
+
+      const outputSchema = z.object({
+        greeting: z.string(),
+        length: z.number(),
+      });
+
+      const mutation = router.operation
+        .input(inputSchema)
+        .output(outputSchema)
+        .mutation<{ greeting: string; length: number }>(({ input }) => {
+          return Promise.resolve({
+            greeting: `Hello, ${input.name}!`,
+            length: input.name.length,
+          });
+        });
+
+      const result = await mutation.handler({
+        ctx: {},
+        input: { name: 'Alice' },
+      });
+
+      expect(result).toEqual({
+        greeting: 'Hello, Alice!',
+        length: 5,
+      });
+    });
+
+    it('should handle validation errors properly', async () => {
+      const router = ddmushi.init({
+        ctx: {},
+      });
+
+      const inputSchema = z.object({
+        count: z.number().positive(),
+        email: z.string().email(),
+      });
+
+      const query = router.operation.input(inputSchema).query(({ input }) => {
+        return Promise.resolve({ success: true, count: input.count });
+      });
+
+      // Test with invalid count
+      await expect(
+        query.handler({
+          ctx: {},
+          input: { count: -5, email: 'test@example.com' },
+        })
+      ).rejects.toThrow();
+
+      // Test with invalid email
+      await expect(
+        query.handler({
+          ctx: {},
+          input: { count: 10, email: 'not-an-email' },
+        })
+      ).rejects.toThrow();
     });
   });
 });

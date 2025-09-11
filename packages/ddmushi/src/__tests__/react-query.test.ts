@@ -172,7 +172,7 @@ describe('React Query integration', () => {
         getData: router.operation.query<
           { items: string[]; user: string },
           { category: string }
-        >(({ opts: { ctx }, input: params }) => {
+        >(({ ctx, input: params }) => {
           return Promise.resolve({
             items: [`item-${params?.category || 'default'}`],
             user: ctx.userId,
@@ -201,7 +201,7 @@ describe('React Query integration', () => {
         getVersion: router.operation.query<{
           version: string;
           timestamp: number;
-        }>(({ opts: { ctx } }) =>
+        }>(({ ctx }) =>
           Promise.resolve({
             version: ctx.version,
             timestamp: Date.now(),
@@ -233,7 +233,7 @@ describe('React Query integration', () => {
         getUser: router.operation.query<
           { id: string; name: string; role: 'admin' | 'user' },
           { userId: string }
-        >(({ opts: { ctx }, input: params }) => {
+        >(({ ctx, input: params }) => {
           // TypeScript should infer the correct types here
           const userId: string = params?.userId || ctx.user.id;
           const userRole: 'admin' | 'user' = ctx.user.role;
