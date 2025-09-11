@@ -49,13 +49,17 @@ function execute<
 ): Operation<TType, Ctx, TData, TParams> {
   const composedHandler: ResolverFn<Ctx, TData, TParams> = async ({
     input,
-    opts: handlerOpts,
+    ...handlerOpts
   }) => {
     // Create a composed function that allows middleware to wrap execution
     const executeWithOpts = async (
       opts: MiddlewareOpts<Ctx, TParams>
     ): Promise<TData> => {
-      return await handler({ input: opts.input, opts: { ctx: opts.ctx } });
+      return await handler({
+        ...handlerOpts,
+        input: opts.input,
+        ctx: opts.ctx,
+      });
     };
 
     const composed = meta.middlewares.reduceRight<

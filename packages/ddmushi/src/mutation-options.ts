@@ -20,7 +20,7 @@ export function createMutationOptions<
     const mutationKey = buildMutationKey(path);
 
     const mutationFn: MutationFunction<TData, TVariables> = async (input) =>
-      await mutate({ opts, input });
+      await mutate({ ...opts, input });
 
     return {
       ...options,

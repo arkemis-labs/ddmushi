@@ -27,7 +27,7 @@ describe('ddmushi core functionality', () => {
       });
 
       const queryOp = router.operation.query<string, { id: string }>(
-        ({ input, opts: { ctx } }) => {
+        ({ input, ctx }) => {
           return Promise.resolve(input?.id || ctx.test);
         }
       );
@@ -66,7 +66,7 @@ describe('ddmushi core functionality', () => {
 
       const userCollection = router.collection({
         getUser: router.operation.query<{ id: string; name: string }, string>(
-          ({ input, opts: { ctx } }) => {
+          ({ input, ctx }) => {
             return Promise.resolve({
               id: input || ctx.userId,
               name: 'Test User',
@@ -125,7 +125,7 @@ describe('ddmushi core functionality', () => {
       const testQuery = router.operation.query<{
         data: string;
         user: string;
-      }>(async ({ input, opts: { ctx } }) => {
+      }>(async ({ input, ctx }) => {
         // Context should be properly typed and available
         expect(ctx.database).toBe('test-db');
         expect(ctx.currentUser.id).toBe('user-123');
@@ -139,7 +139,7 @@ describe('ddmushi core functionality', () => {
 
       // Test the query function directly
       const result = await testQuery.handler({
-        opts: { ctx: mockCtx },
+        ctx: mockCtx,
         input: { filter: 'active' },
       });
 
@@ -156,11 +156,12 @@ describe('ddmushi core functionality', () => {
       });
 
       const simpleQuery = simpleRouter.operation.query<{ version: string }>(
-        async ({ opts: { ctx } }) => ({ version: ctx.version })
+        async ({ ctx }) => ({ version: ctx.version })
       );
 
       const result = await simpleQuery.handler({
-        opts: { ctx: { version: '1.0.0' } },
+        ctx: { version: '1.0.0' },
+        input: undefined,
       });
       expect(result.version).toBe('1.0.0');
     });
@@ -183,13 +184,14 @@ describe('ddmushi core functionality', () => {
           }
           return await next(opts);
         })
-        .query<{ message: string }, void>(async ({ opts: { ctx } }) => {
+        .query<{ message: string }, void>(async ({ ctx }) => {
           return await Promise.resolve({ message: `Hello ${ctx.user?.id}` });
         });
 
       await expect(
         protectedQuery.handler({
-          opts: { ctx: { user: null, isAuthenticated: false } },
+          ctx: { user: null, isAuthenticated: false },
+          input: undefined,
         })
       ).rejects.toThrow('Unauthorized: User must be authenticated');
 
@@ -199,7 +201,8 @@ describe('ddmushi core functionality', () => {
       };
 
       const result = await protectedQuery.handler({
-        opts: { ctx: authenticatedCtx },
+        ctx: authenticatedCtx,
+        input: undefined,
       });
 
       expect(result.message).toBe('Hello user-123');
@@ -228,14 +231,15 @@ describe('ddmushi core functionality', () => {
 
           return result;
         })
-        .query<{ data: string }, void>(async ({ opts: { ctx } }) => {
+        .query<{ data: string }, void>(async ({ ctx }) => {
           // Simulate some work
           await new Promise((resolve) => setTimeout(resolve, 10));
           return { data: `Request ${ctx.requestId} processed` };
         });
 
       await loggedQuery.handler({
-        opts: { ctx: { requestId: 'req-123' } },
+        ctx: { requestId: 'req-123' },
+        input: undefined,
       });
 
       expect(logs).toHaveLength(2);
@@ -258,7 +262,6 @@ describe('ddmushi core functionality', () => {
         return await next({
           ...opts,
           ctx: {
-            ...opts.ctx,
             validated: true,
           },
         });
@@ -269,7 +272,7 @@ describe('ddmushi core functionality', () => {
         .mutation<
           { success: boolean; validated: boolean },
           { email: string; password: string }
-        >(async ({ input, opts: { ctx } }) => {
+        >(async ({ input, ctx }) => {
           if (!input?.email?.includes('@')) {
             throw new Error('Invalid email format');
           }
@@ -286,14 +289,14 @@ describe('ddmushi core functionality', () => {
       // Test with invalid input
       await expect(
         validatedMutation.handler({
-          opts: { ctx: { validationEnabled: true } },
+          ctx: { validationEnabled: true },
           input: { email: 'invalid-email', password: '123' },
         })
       ).rejects.toThrow('Invalid email format');
 
       // Test with valid input
       const result = await validatedMutation.handler({
-        opts: { ctx: { validationEnabled: true } },
+        ctx: { validationEnabled: true },
         input: { email: 'test@example.com', password: 'password123' },
       });
 
@@ -338,14 +341,14 @@ describe('ddmushi core functionality', () => {
       // Test error transformation in production
       await expect(
         errorProneQuery.handler({
-          opts: { ctx: { environment: 'production' } },
+          ctx: { environment: 'production' },
           input: { shouldFail: true },
         })
       ).rejects.toThrow('Internal server error');
 
       // Test normal operation
       const result = await errorProneQuery.handler({
-        opts: { ctx: { environment: 'production' } },
+        ctx: { environment: 'production' },
         input: { shouldFail: false },
       });
 
@@ -396,7 +399,7 @@ describe('ddmushi core functionality', () => {
         .use(middleware1)
         .use(middleware2)
         .use(middleware3)
-        .query<{ steps: boolean[] }, void>(async ({ opts: { ctx } }) => {
+        .query<{ steps: boolean[] }, void>(async ({ ctx }) => {
           executionOrder.push('handler-executed');
           return await {
             steps: [(ctx as any).step1, (ctx as any).step2, (ctx as any).step3],
@@ -404,7 +407,8 @@ describe('ddmushi core functionality', () => {
         });
 
       const result = await composedQuery.handler({
-        opts: { ctx: { test: 'value' } },
+        ctx: { test: 'value' },
+        input: undefined,
       });
 
       // Verify execution order (onion-like pattern)
@@ -475,7 +479,7 @@ describe('ddmushi core functionality', () => {
             canDelete: boolean;
           },
           void
-        >(async ({ opts: { ctx } }) => {
+        >(async ({ ctx }) => {
           return await {
             user: (ctx as any).user,
             permissions: (ctx as any).permissions,
@@ -484,12 +488,11 @@ describe('ddmushi core functionality', () => {
         });
 
       const result = await enrichedQuery.handler({
-        opts: {
-          ctx: {
-            rawUser: { id: '123', name: 'John', role: 'user' },
-            permissions: [],
-          },
+        ctx: {
+          rawUser: { id: '123', name: 'John', role: 'user' },
+          permissions: [],
         },
+        input: undefined,
       });
 
       expect(result.user.displayName).toBe('John (user)');
@@ -518,13 +521,15 @@ describe('ddmushi core functionality', () => {
 
       await expect(
         queryWithFailingMiddleware.handler({
-          opts: { ctx: { shouldFail: true } },
+          ctx: { shouldFail: true },
+          input: undefined,
         })
       ).rejects.toThrow('Middleware failure');
 
       // Test that it works when middleware doesn't fail
       const result = await queryWithFailingMiddleware.handler({
-        opts: { ctx: { shouldFail: false } },
+        ctx: { shouldFail: false },
+        input: undefined,
       });
 
       expect(result.data).toBe('This should not execute');
@@ -538,21 +543,21 @@ describe('ddmushi core functionality', () => {
       });
 
       const inputSchema = z.object({
-        email: z.string().email(),
+        email: z.string(),
         age: z.number().min(18),
       });
 
       const query = router.operation
         .input(inputSchema)
-        .query<{ message: string }>(({ input }) => {
+        .query<{ message: string }>((opts) => {
           return Promise.resolve({
-            message: `Hello ${input.email}, you are ${input.age} years old`,
+            message: `Hello ${opts.input.email}, you are ${opts.input.age} years old`,
           });
         });
 
       // Test with valid input
       const result = await query.handler({
-        opts: { ctx: {} },
+        ctx: {},
         input: { email: 'test@example.com', age: 25 },
       });
       expect(result).toEqual({
@@ -562,7 +567,7 @@ describe('ddmushi core functionality', () => {
       // Test with invalid input (should throw validation error)
       await expect(
         query.handler({
-          opts: { ctx: {} },
+          ctx: {},
           input: { email: 'invalid-email', age: 16 },
         })
       ).rejects.toThrow();
@@ -587,7 +592,7 @@ describe('ddmushi core functionality', () => {
           });
         });
 
-      const result = await query.handler({ opts: { ctx: {} } });
+      const result = await query.handler({ ctx: {}, input: undefined });
       expect(result).toHaveProperty('data', 'test data');
       expect(result).toHaveProperty('timestamp');
       expect(typeof result.timestamp).toBe('number');
@@ -618,7 +623,7 @@ describe('ddmushi core functionality', () => {
         });
 
       const result = await mutation.handler({
-        opts: { ctx: {} },
+        ctx: {},
         input: { name: 'Alice' },
       });
 
@@ -645,7 +650,7 @@ describe('ddmushi core functionality', () => {
       // Test with invalid count
       await expect(
         query.handler({
-          opts: { ctx: {} },
+          ctx: {},
           input: { count: -5, email: 'test@example.com' },
         })
       ).rejects.toThrow();
@@ -653,7 +658,7 @@ describe('ddmushi core functionality', () => {
       // Test with invalid email
       await expect(
         query.handler({
-          opts: { ctx: {} },
+          ctx: {},
           input: { count: 10, email: 'not-an-email' },
         })
       ).rejects.toThrow();

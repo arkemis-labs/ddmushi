@@ -35,7 +35,7 @@ export type ResolverFn<
   Ctx extends Record<string, unknown>,
   TData = unknown,
   TInput = unknown,
-> = (resolver: { opts: RuntimeOptions<Ctx>; input?: TInput }) => Promise<TData>;
+> = (opts: RuntimeOptions<Ctx> & { input: TInput }) => Promise<TData>;
 
 export interface QueryDefinition<
   Ctx extends Record<string, unknown>,
@@ -122,7 +122,7 @@ export type MiddlewareOpts<
   TInput = unknown,
 > = {
   ctx: Ctx;
-  input?: TInput;
+  input: TInput;
   output?: AnyParser;
 };
 
