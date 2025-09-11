@@ -1,19 +1,38 @@
+import { createInputMiddleware, createOutputMiddleware } from './middlewares';
 import type { AnyParser } from './parser';
-import type { Middleware, Operation, OperationType, ResolverFn } from './types';
+import type {
+  InferParserInput,
+  Middleware,
+  MiddlewareOpts,
+  Operation,
+  OperationType,
+  ResolverFn,
+} from './types';
 
-type OperationBuilderMeta<Ctx extends Record<string, unknown>> = {
+type OperationBuilderMeta<
+  Ctx extends Record<string, unknown>,
+  TInput = unknown,
+> = {
   inputs: AnyParser[];
   output?: AnyParser;
-  middlewares: Middleware<Ctx>[];
+  middlewares: Middleware<Ctx, any>[];
+  inputType?: TInput;
 };
 
-export type OperationBuilder<Ctx extends Record<string, unknown>> = {
-  _meta: OperationBuilderMeta<Ctx>;
-  use(middleware: Middleware<Ctx>): OperationBuilder<Ctx>;
-  query<TData = unknown, TParams = unknown>(
+export type OperationBuilder<
+  Ctx extends Record<string, unknown>,
+  TInput = unknown,
+> = {
+  _meta: OperationBuilderMeta<Ctx, TInput>;
+  use(middleware: Middleware<Ctx, any>): OperationBuilder<Ctx, TInput>;
+  input<TParser extends AnyParser>(
+    parser: TParser
+  ): OperationBuilder<Ctx, InferParserInput<TParser>>;
+  output(parser: AnyParser): OperationBuilder<Ctx, TInput>;
+  query<TData = unknown, TParams = TInput>(
     handler: ResolverFn<Ctx, TData, TParams>
   ): Operation<'query', Ctx, TData, TParams>;
-  mutation<TData, TVariables>(
+  mutation<TData = unknown, TVariables = TInput>(
     handler: ResolverFn<Ctx, TData, TVariables>
   ): Operation<'mutation', Ctx, TData, TVariables>;
 };
@@ -26,30 +45,32 @@ function execute<
 >(
   type: TType,
   handler: ResolverFn<Ctx, TData, TParams>,
-  meta: OperationBuilderMeta<Ctx>
+  meta: OperationBuilderMeta<Ctx, any>
 ): Operation<TType, Ctx, TData, TParams> {
   const composedHandler: ResolverFn<Ctx, TData, TParams> = async ({
     input,
-    opts,
+    opts: handlerOpts,
   }) => {
     // Create a composed function that allows middleware to wrap execution
-    const executeWithCtx = async (ctx: Ctx): Promise<TData> => {
-      return await handler({ input, opts: { ...opts, ctx } });
+    const executeWithOpts = async (
+      opts: MiddlewareOpts<Ctx, TParams>
+    ): Promise<TData> => {
+      return await handler({ input: opts.input, opts: { ctx: opts.ctx } });
     };
 
-    const composed = meta.middlewares.reduceRight<(ctx: Ctx) => Promise<TData>>(
-      (next, middleware) => async (ctx) => {
+    const composed = meta.middlewares.reduceRight<
+      (opts: MiddlewareOpts<Ctx, TParams>) => Promise<TData>
+    >(
+      (next, middleware) => async (opts) => {
         return (await middleware({
-          ctx,
-          next: async (newCtx) => {
-            return await next(newCtx);
-          },
-        })) as Promise<TData>;
+          opts,
+          next: async (newOpts) => await next(newOpts),
+        })) as TData;
       },
-      executeWithCtx
+      executeWithOpts
     );
 
-    return await composed(opts.ctx);
+    return await composed({ input, ctx: handlerOpts.ctx });
   };
 
   return {
@@ -59,30 +80,49 @@ function execute<
   };
 }
 
-export function createOperationBuilder<Ctx extends Record<string, unknown>>(
-  defaultMeta?: Partial<OperationBuilderMeta<Ctx>>
-) {
-  const _meta: OperationBuilderMeta<Ctx> = {
-    inputs: [],
+export function createOperationBuilder<
+  Ctx extends Record<string, unknown>,
+  TInput = unknown,
+>(
+  defaultMeta?: Partial<OperationBuilderMeta<Ctx, TInput>>
+): OperationBuilder<Ctx, TInput> {
+  const _meta: OperationBuilderMeta<Ctx, TInput> = {
     output: undefined,
-    middlewares: [],
     ...defaultMeta,
+    inputs: defaultMeta?.inputs ?? [],
+    middlewares: defaultMeta?.middlewares ?? [],
   };
 
   return {
     _meta,
-    use(middleware: Middleware<Ctx>): OperationBuilder<Ctx> {
-      return createOperationBuilder({
+    input<TParser extends AnyParser>(
+      parser: TParser
+    ): OperationBuilder<Ctx, InferParserInput<TParser>> {
+      return createOperationBuilder<Ctx, InferParserInput<TParser>>({
+        inputs: [..._meta.inputs, parser],
+        middlewares: [..._meta.middlewares, createInputMiddleware(parser)],
+        output: _meta.output,
+      });
+    },
+    output(parser: AnyParser): OperationBuilder<Ctx, TInput> {
+      return createOperationBuilder<Ctx, TInput>({
+        ..._meta,
+        output: parser,
+        middlewares: [..._meta.middlewares, createOutputMiddleware(parser)],
+      });
+    },
+    use(middleware: Middleware<Ctx, any>): OperationBuilder<Ctx, TInput> {
+      return createOperationBuilder<Ctx, TInput>({
         ..._meta,
         middlewares: [..._meta.middlewares, middleware],
       });
     },
-    query<TData = unknown, TParams = unknown>(
+    query<TData = unknown, TParams = TInput>(
       handler: ResolverFn<Ctx, TData, TParams>
     ): Operation<'query', Ctx, TData, TParams> {
       return execute('query', handler, _meta);
     },
-    mutation<TData, TVariables>(
+    mutation<TData = unknown, TVariables = TInput>(
       handler: ResolverFn<Ctx, TData, TVariables>
     ): Operation<'mutation', Ctx, TData, TVariables> {
       return execute('mutation', handler, _meta);
