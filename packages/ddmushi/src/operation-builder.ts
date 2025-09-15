@@ -9,6 +9,7 @@ import type {
   OperationBuilderMeta,
   OperationType,
   ResolverFn,
+  ResolverFnOpts,
 } from './types';
 
 function execute<
@@ -18,10 +19,10 @@ function execute<
   TParams = unknown,
 >(
   type: TType,
-  handler: ResolverFn<Ctx, TData, TParams>,
+  handler: ResolverFn<TType, Ctx, TData, TParams>,
   meta: OperationBuilderMeta<Ctx, any>
 ): Operation<TType, Ctx, TData, TParams> {
-  const composedHandler: ResolverFn<Ctx, TData, TParams> = async ({
+  const composedHandler: ResolverFn<TType, Ctx, TData, TParams> = async ({
     input,
     ...handlerOpts
   }) => {
@@ -33,7 +34,7 @@ function execute<
         ...handlerOpts,
         input: opts.input,
         ctx: opts.ctx,
-      });
+      } as ResolverFnOpts<TType, Ctx, TParams>);
     };
 
     const composed = meta.middlewares.reduceRight<
@@ -96,12 +97,12 @@ export function createOperationBuilder<
       });
     },
     query<TData = unknown, TParams = TInput>(
-      handler: ResolverFn<Ctx, TData, TParams>
+      handler: ResolverFn<'query', Ctx, TData, TParams>
     ): Operation<'query', Ctx, TData, TParams> {
       return execute('query', handler, _meta);
     },
     mutation<TData = unknown, TVariables = TInput>(
-      handler: ResolverFn<Ctx, TData, TVariables>
+      handler: ResolverFn<'mutation', Ctx, TData, TVariables>
     ): Operation<'mutation', Ctx, TData, TVariables> {
       return execute('mutation', handler, _meta);
     },

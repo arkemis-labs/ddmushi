@@ -1,4 +1,6 @@
 import type {
+  InfiniteData,
+  QueryFunctionContext,
   QueryKey,
   UseInfiniteQueryOptions,
   UseMutationOptions,
@@ -20,6 +22,7 @@ export type InferParserInput<T> = T extends { _input: infer I }
 
 export type RuntimeOptions<Ctx extends Record<string, unknown>> = {
   ctx: Ctx;
+  pageParam?: unknown;
 };
 
 export type DDmushiMeta<Ctx extends Record<string, unknown>> = {
@@ -31,29 +34,20 @@ export type DDmushiMeta<Ctx extends Record<string, unknown>> = {
   };
 } & RuntimeOptions<Ctx>;
 
+export type ResolverFnOpts<
+  TType extends OperationType,
+  Ctx extends Record<string, unknown>,
+  TInput = unknown,
+> = TType extends 'query'
+  ? RuntimeOptions<Ctx> & { input: TInput } & QueryFunctionContext
+  : RuntimeOptions<Ctx> & { input: TInput };
+
 export type ResolverFn<
+  TType extends OperationType,
   Ctx extends Record<string, unknown>,
   TData = unknown,
   TInput = unknown,
-> = (opts: RuntimeOptions<Ctx> & { input: TInput }) => Promise<TData>;
-
-export interface QueryDefinition<
-  Ctx extends Record<string, unknown>,
-  TData = unknown,
-  TParams = unknown,
-> {
-  queryKey: (params?: TParams) => QueryKey;
-  queryFn: ResolverFn<Ctx, TData, TParams>;
-}
-
-export interface MutationDefinition<
-  Ctx extends Record<string, unknown>,
-  TData = unknown,
-  TVariables = unknown,
-> {
-  mutationKey?: QueryKey;
-  mutationFn: ResolverFn<Ctx, TData, TVariables>;
-}
+> = (opts: ResolverFnOpts<TType, Ctx, TInput>) => Promise<TData>;
 
 export type OperationType = 'query' | 'mutation';
 
@@ -65,7 +59,7 @@ export interface Operation<
 > {
   _type: 'operation';
   _operationType: TType;
-  handler: ResolverFn<Ctx, TData, TParams>;
+  handler: ResolverFn<TType, Ctx, TData, TParams>;
 }
 
 export type Collection<T> = {
@@ -127,10 +121,10 @@ export type OperationBuilder<
   ): OperationBuilder<Ctx, InferParserInput<TParser>>;
   output(parser: AnyParser): OperationBuilder<Ctx, TInput>;
   query<TData = unknown, TParams = TInput>(
-    handler: ResolverFn<Ctx, TData, TParams>
+    handler: ResolverFn<'query', Ctx, TData, TParams>
   ): Operation<'query', Ctx, TData, TParams>;
   mutation<TData = unknown, TVariables = TInput>(
-    handler: ResolverFn<Ctx, TData, TVariables>
+    handler: ResolverFn<'mutation', Ctx, TData, TVariables>
   ): Operation<'mutation', Ctx, TData, TVariables>;
 };
 
@@ -148,11 +142,35 @@ export type InfiniteQueryOptionsBuilder<TData = unknown, TParams = unknown> = <
 >(
   params?: TParams,
   options?: Partial<
-    UseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam> &
-      UseSuspenseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam>
+    UseInfiniteQueryOptions<
+      TData,
+      Error,
+      InfiniteData<TData>,
+      QueryKey,
+      TPageParam
+    > &
+      UseSuspenseInfiniteQueryOptions<
+        TData,
+        Error,
+        InfiniteData<TData>,
+        QueryKey,
+        TPageParam
+      >
   >
-) => UseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam> &
-  UseSuspenseInfiniteQueryOptions<TData, Error, TData, QueryKey, TPageParam>;
+) => UseInfiniteQueryOptions<
+  TData,
+  Error,
+  InfiniteData<TData>,
+  QueryKey,
+  TPageParam
+> &
+  UseSuspenseInfiniteQueryOptions<
+    TData,
+    Error,
+    InfiniteData<TData>,
+    QueryKey,
+    TPageParam
+  >;
 
 export type MutationOptionsBuilder<TData = unknown, TVariables = unknown> = (
   options?: Partial<UseMutationOptions<TData, Error, TVariables>>

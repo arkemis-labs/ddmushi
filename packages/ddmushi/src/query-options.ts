@@ -20,13 +20,13 @@ export function createQueryOptions<
   TParams = unknown,
 >(
   opts: RuntimeOptions<Ctx>,
-  query: ResolverFn<Ctx, TData, TParams>,
+  query: ResolverFn<'query', Ctx, TData, TParams>,
   path: readonly string[]
 ) {
   return (input: TParams, options: AnyQueryOptions) => {
     const queryKey = buildQueryKey(path, input, 'query');
-    const queryFn: QueryFunction<unknown, QueryKey> = async () => {
-      return await query({ ...opts, input });
+    const queryFn: QueryFunction<unknown, QueryKey> = async (context) => {
+      return await query({ ...context, ...opts, input });
     };
 
     return queryOptions({
