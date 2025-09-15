@@ -161,7 +161,7 @@ describe('ddmushi core functionality', () => {
 
       const result = await simpleQuery.handler({
         ctx: { version: '1.0.0' },
-        input: undefined,
+        input: {},
       });
       expect(result.version).toBe('1.0.0');
     });
@@ -592,7 +592,7 @@ describe('ddmushi core functionality', () => {
           });
         });
 
-      const result = await query.handler({ ctx: {}, input: undefined });
+      const result = await query.handler({ ctx: {}, input: {} });
       expect(result).toHaveProperty('data', 'test data');
       expect(result).toHaveProperty('timestamp');
       expect(typeof result.timestamp).toBe('number');

@@ -2,12 +2,12 @@ import type { QueryKey } from '@tanstack/react-query';
 import { createInfiniteQueryOptions } from './infinite-query-options';
 import { createMutationOptions } from './mutation-options';
 import { createQueryOptions } from './query-options';
-import type { DDmushiMeta, Operation, QueryKind } from './types';
+import type { Collection, DDmushiMeta, Operation, QueryKind } from './types';
 
-export function createRecursiveProxy<
+export function createCollectionBuilder<
   TMeta extends DDmushiMeta<Record<string, unknown>>,
   T extends Record<string, unknown>,
->(meta: TMeta, target: T, path: string[] = []): T {
+>(meta: TMeta, target: T, path: string[] = []): Collection<T> {
   const { _config, ...opts } = meta;
   const proxy = new Proxy(target, {
     get(obj, prop) {
@@ -44,7 +44,7 @@ export function createRecursiveProxy<
         const metadata = _config.collections.get(operation);
         const targetToProxy = metadata?.originalTarget ?? operation;
 
-        return createRecursiveProxy(meta, targetToProxy, currentPath);
+        return createCollectionBuilder(meta, targetToProxy, currentPath);
       }
 
       return operation;
@@ -52,12 +52,12 @@ export function createRecursiveProxy<
   });
 
   // track collections
-  _config.collections.set(proxy, {
+  _config.collections.set(proxy as Record<string, unknown>, {
     originalTarget: target,
     isCollection: true,
   });
 
-  return proxy;
+  return proxy as Collection<T>;
 }
 
 function isCollection(value: unknown): value is Record<string, unknown> {

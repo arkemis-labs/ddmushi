@@ -5,37 +5,11 @@ import type {
   Middleware,
   MiddlewareOpts,
   Operation,
+  OperationBuilder,
+  OperationBuilderMeta,
   OperationType,
   ResolverFn,
 } from './types';
-
-type OperationBuilderMeta<
-  Ctx extends Record<string, unknown>,
-  TInput = unknown,
-> = {
-  inputs: AnyParser[];
-  output?: AnyParser;
-  middlewares: Middleware<Ctx, any>[];
-  inputType?: TInput;
-};
-
-export type OperationBuilder<
-  Ctx extends Record<string, unknown>,
-  TInput = unknown,
-> = {
-  _meta: OperationBuilderMeta<Ctx, TInput>;
-  use(middleware: Middleware<Ctx, any>): OperationBuilder<Ctx, TInput>;
-  input<TParser extends AnyParser>(
-    parser: TParser
-  ): OperationBuilder<Ctx, InferParserInput<TParser>>;
-  output(parser: AnyParser): OperationBuilder<Ctx, TInput>;
-  query<TData = unknown, TParams = TInput>(
-    handler: ResolverFn<Ctx, TData, TParams>
-  ): Operation<'query', Ctx, TData, TParams>;
-  mutation<TData = unknown, TVariables = TInput>(
-    handler: ResolverFn<Ctx, TData, TVariables>
-  ): Operation<'mutation', Ctx, TData, TVariables>;
-};
 
 function execute<
   TType extends OperationType,

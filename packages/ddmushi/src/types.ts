@@ -91,6 +91,49 @@ export type Collection<T> = {
         : T[K];
 };
 
+export type CollectionBuilder<TInput extends Record<string, unknown>> = (
+  operations: TInput
+) => Collection<TInput>;
+
+export type DDmushiInstance<
+  Ctx extends Record<string, unknown>,
+  TInput = any,
+> = {
+  _meta: DDmushiMeta<Ctx>;
+  collection: <T extends Record<string, unknown>>(
+    operations: T
+  ) => Collection<T>;
+  operation: OperationBuilder<Ctx, TInput>;
+};
+
+export type OperationBuilderMeta<
+  Ctx extends Record<string, unknown>,
+  TInput = unknown,
+> = {
+  inputs: AnyParser[];
+  output?: AnyParser;
+  middlewares: Middleware<Ctx, any>[];
+  inputType?: TInput;
+};
+
+export type OperationBuilder<
+  Ctx extends Record<string, unknown>,
+  TInput = unknown,
+> = {
+  _meta: OperationBuilderMeta<Ctx, TInput>;
+  use(middleware: Middleware<Ctx, any>): OperationBuilder<Ctx, TInput>;
+  input<TParser extends AnyParser>(
+    parser: TParser
+  ): OperationBuilder<Ctx, InferParserInput<TParser>>;
+  output(parser: AnyParser): OperationBuilder<Ctx, TInput>;
+  query<TData = unknown, TParams = TInput>(
+    handler: ResolverFn<Ctx, TData, TParams>
+  ): Operation<'query', Ctx, TData, TParams>;
+  mutation<TData = unknown, TVariables = TInput>(
+    handler: ResolverFn<Ctx, TData, TVariables>
+  ): Operation<'mutation', Ctx, TData, TVariables>;
+};
+
 export type QueryOptionsBuilder<TData = unknown, TParams = unknown> = (
   params?: TParams,
   options?: Partial<
