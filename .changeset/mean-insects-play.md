@@ -1,5 +1,0 @@
----
-"ddmushi": patch
----
-
-fix: types

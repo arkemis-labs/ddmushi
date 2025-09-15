@@ -1,5 +1,0 @@
----
-"ddmushi": minor
----
-
-enhance types
