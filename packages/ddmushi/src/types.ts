@@ -39,7 +39,7 @@ export type ResolverFnOpts<
   Ctx extends Record<string, unknown>,
   TInput = unknown,
 > = TType extends 'query'
-  ? RuntimeOptions<Ctx> & { input: TInput } & QueryFunctionContext
+  ? RuntimeOptions<Ctx> & { input: TInput } & Partial<QueryFunctionContext>
   : RuntimeOptions<Ctx> & { input: TInput };
 
 export type ResolverFn<
