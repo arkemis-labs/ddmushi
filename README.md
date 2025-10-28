@@ -1,5 +1,7 @@
 # ddmushi (Den Den Mushi)
 
+<img width="2908" height="913" alt="image" src="https://github.com/user-attachments/assets/6ec0bdaf-b785-43f7-a5ad-8bfae3a35d8e" />
+
 > A tRPC-like API organization library for TanStack React Query
 
 **ddmushi** provides a type-safe way to organize your API operations with automatic React Query integration. Think tRPC's developer experience, but for existing REST APIs.
