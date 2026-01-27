@@ -1,5 +1,11 @@
 # ddmushi
 
+## 0.3.1
+
+### Patch Changes
+
+- [#16](https://github.com/arkemis-labs/ddmushi/pull/16) [`f19b954`](https://github.com/arkemis-labs/ddmushi/commit/f19b954359cb85a3b1b2fdeda144dd36b67da790) Thanks [@ilyichv](https://github.com/ilyichv)! - fix: adjust infinite query context + types
+
 ## 0.3.0
 
 ### Minor Changes
