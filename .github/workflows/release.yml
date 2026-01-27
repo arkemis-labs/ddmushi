@@ -33,6 +33,7 @@ jobs:
           version: 9.5.0
           node-version: 20
           cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install NPM Dependencies
         run: pnpm install
