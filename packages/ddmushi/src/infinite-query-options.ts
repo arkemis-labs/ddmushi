@@ -20,7 +20,7 @@ export function createInfiniteQueryOptions<
   TParams = unknown,
 >(
   opts: RuntimeOptions<Ctx>,
-  query: ResolverFn<Ctx, TData, TParams>,
+  query: ResolverFn<'query', Ctx, TData, TParams>,
   path: readonly string[]
 ) {
   return (input: TParams, options: AnyInfiniteQueryOptions) => {
@@ -29,15 +29,13 @@ export function createInfiniteQueryOptions<
     const queryFn: QueryFunction<unknown, QueryKey, unknown> = async (
       context
     ) => {
-      // @ts-expect-error - todo: extend ResolverFn to include pageParam
-      return await query({ opts, input, pageParam: context.pageParam });
+      return await query({ ...context, ...opts, input });
     };
 
     return infiniteQueryOptions({
       ...options,
       queryKey,
       queryFn,
-      initialPageParam: options?.initialPageParam,
     });
   };
 }

@@ -13,7 +13,7 @@ export function createMutationOptions<
   TVariables = unknown,
 >(
   opts: RuntimeOptions<Ctx>,
-  mutate: ResolverFn<Ctx, TData, TVariables>,
+  mutate: ResolverFn<'mutation', Ctx, TData, TVariables>,
   path: readonly string[]
 ) {
   return (options: AnyMutationOptions): AnyMutationOptions => {

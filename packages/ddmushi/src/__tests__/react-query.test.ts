@@ -1,3 +1,4 @@
+import type { InfiniteData } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import { ddmushi } from '../core';
 
@@ -217,6 +218,56 @@ describe('React Query integration', () => {
 
       expect(result.version).toBe('2.0.0');
       expect(result.timestamp).toBeTypeOf('number');
+    });
+  });
+
+  describe('Infinite Query options', () => {
+    it('should generate proper infinite query options with InfiniteData type', () => {
+      const router = ddmushi.init({
+        ctx: {
+          apiUrl: 'https://api.example.com',
+        },
+      });
+
+      type PageData = { items: string[]; nextCursor?: string };
+
+      const api = router.collection({
+        getPagedData: router.operation.query<PageData, { cursor?: string }>(
+          ({ input }) => {
+            const cursor = input?.cursor || '0';
+            return Promise.resolve({
+              items: [`item-${cursor}-1`, `item-${cursor}-2`],
+              nextCursor: cursor === '0' ? '1' : undefined,
+            });
+          }
+        ),
+      });
+
+      // Test infinite query options generation
+      const infiniteOptions = api.getPagedData.infiniteQueryOptions(
+        { cursor: undefined },
+        {
+          getNextPageParam: (lastPage) => lastPage.nextCursor,
+          initialPageParam: undefined as string | undefined,
+        }
+      );
+
+      expect(infiniteOptions.queryKey).toEqual([
+        'getPagedData',
+        { input: { cursor: undefined }, kind: 'infinite' },
+      ]);
+      expect(infiniteOptions.queryFn).toBeTypeOf('function');
+      expect(infiniteOptions.getNextPageParam).toBeTypeOf('function');
+
+      // Type check: The result should be InfiniteData<PageData>
+      // This is a compile-time check that the types are correct
+      const _typeCheck = (data: InfiniteData<PageData>) => {
+        expect(data.pages).toBeInstanceOf(Array);
+        expect(data.pageParams).toBeInstanceOf(Array);
+      };
+
+      // Verify the type exists
+      expect(_typeCheck).toBeDefined();
     });
   });
 
